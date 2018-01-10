@@ -1,0 +1,26 @@
+syntax: glob
+
+*.user
+*.pb*
+*.dep
+*.o
+*.lst
+.settings
+.cproject
+.pydevproject
+.project
+out
+pdf
+build
+Debug
+Release
+*~
+doc/html
+doc/latex
+*.autosave
+*.idea
+*.launch
+*.pdf
+PDF
+include/strdata.h
+Gauge
