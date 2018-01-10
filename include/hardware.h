@@ -43,14 +43,19 @@
  * 		- SERIAL_USB_RX - USART1_RX - PA10 - Альтернативная функция
  */
 ///@{
+#define SERIAL_UST_USART						USART1
+
+#define SERIAL_USB_TX_PORT						GPIOA
 #define SERIAL_USB_TX_PIN						GPIO_Pin_9
+
+#define SERIAL_USB_RX_PORT						GPIOA
 #define SERIAL_USB_RX_PIN						GPIO_Pin_10
 ///@}
 
 
 /**
- * \name Serial interface 2 (RS232)
- * \brief Классический последовательный интерфейс RS232
+ * \name Serial interface 2 (RS-232)
+ * \brief Классический последовательный интерфейс RS-232
  *
  * Периферия - USART2, шина - APB1, 36 MHz.
  *
@@ -59,13 +64,18 @@
  * 		- SERIAL_RS232_RX - USART2_RX - PA3 - Альтернативная функция
  */
 ///@{
+#define SERIAL_RS232_USART						USART2
+
+#define SERIAL_RS232_TX_PORT					GPIOA
 #define SERIAL_RS232_TX_PIN						GPIO_Pin_2
+
+#define SERIAL_RS232_RX_PORT					GPIOA
 #define SERIAL_RS232_RX_PIN						GPIO_Pin_3
 ///@}
 
 /**
- * \name Serial interface 3 (RS485)
- * \brief Интерфейс RS485
+ * \name Serial interface 3 (RS-485)
+ * \brief Интерфейс RS-485
  *
  * Периферия - USART3, шина - APB1, 36 MHz.
  *
@@ -76,10 +86,23 @@
  * 		- SERIAL_RS485_DE - PC5 - Выход общего назначения, включение передатчика
  */
 ///@{
+#define SERIAL_RS485_USART						USART3
+
+#define SERIAL_RS485_TX_PORT					GPIOC
 #define SERIAL_RS485_TX_PIN						GPIO_Pin_10
+
+#define SERIAL_RS485_RX_PORT					GPIOC
 #define SERIAL_RS485_RX_PIN						GPIO_Pin_11
+
+#define SERIAL_RS485_RE_PORT					GPIOC
 #define SERIAL_RS485_RE_PIN						GPIO_Pin_4
+/// Управление приемником RS-485 (0 - включен, 1 - отключен)
+#define SERIAL_RS485_RE_OUT						TO_BIT_BAND_PER(SERIAL_RS485_RE_PORT->ODR, SERIAL_RS485_RE_PIN)
+
+#define SERIAL_RS485_DE_PORT					GPIOC
 #define SERIAL_RS485_DE_PIN						GPIO_Pin_5
+/// Управление передатчиком RS-485 (0 - отключен, 1 - включен)
+#define SERIAL_RS485_DE_OUT						TO_BIT_BAND_PER(SERIAL_RS485_DE_PORT->ODR, SERIAL_RS485_DE_PIN)
 ///@}
 
 /**
@@ -122,7 +145,7 @@
 #define I2C1_SDA_PIN_AF								GPIO_AF_I2C1
 
 #define I2C1_DUTYCYCLE								I2C_DutyCycle_2
-#define I2C1_SPEED									100000
+#define I2C1_SPEED									1000000
 
 // TODO Проверить правильность настройки DMA для I2C1
 #define I2C_DMA_CHANNEL								DMA_Channel_1
@@ -193,13 +216,20 @@
  * 		- WIEGAND2_IRQ - PB1 - Цифровой вход, прерывание по фронту
  */
 ///@{
-#define WIEGAND1_DATA_PIN							GPIO_Pin_12
 #define WIEGAND1_DATA_PORT							GPIOA
+#define WIEGAND1_DATA_PIN							GPIO_Pin_12
 #define WIEGAND1_DATA_IN							TO_BIT_BAND_PER(WIEGAND1_DATA_PORT->IDR, WIEGAND1_DATA_PIN)
 
-#define WIEGAND2_DATA_PIN							GPIO_Pin_11
+#define WIEGAND1_IRQ_PORT							GPIOB
+#define WIEGAND1_IRQ_PIN							GPIO_Pin_0
+/*************************************************************************************************************************/
+
 #define WIEGAND2_DATA_PORT							GPIOA
+#define WIEGAND2_DATA_PIN							GPIO_Pin_11
 #define WIEGAND2_DATA_IN							TO_BIT_BAND_PER(WIEGAND2_DATA_PORT->IDR, WIEGAND2_DATA_PIN)
+
+#define WIEGAND2_IRQ_PORT							GPIOB
+#define WIEGAND2_IRQ_PIN							GPIO_Pin_1
 ///@}
 
 /**
@@ -229,8 +259,9 @@
  * 		- PORTA_OUT[0:3] - PD4:PD7 - Цифровой выход, открытый коллектор
  */
 ///@{
-#define PORTA_DATA_OUT								GPIO_PIN_XXX
-#define PORTA_DATA_IN
+#define PORTA_DATA_PORT								GPIOD
+#define PORTA_DATA_OUT								(GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7)
+#define PORTA_DATA_IN								(GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3)
 ///@}
 
 
@@ -245,8 +276,9 @@
  * 		- PORTB_OUT[0:3] - PE4:PE7 - Цифровой выход, открытый коллектор
  */
 ///@{
-#define PORTB_DATA_OUT								GPIO_PIN_XXX
-#define PORTB_DATA_IN
+#define PORTB_DATA_PORT								GPIOE
+#define PORTB_DATA_OUT_PINS							(GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7)
+#define PORTB_DATA_IN_PINS							(GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3)
 ///@}
 
 /**
@@ -276,18 +308,22 @@
  *
  */
 ///@{
+#define CLIMATE_TCRIT_PORT							GPIOA
 #define CLIMATE_TCRIT_PIN							GPIO_Pin_6
+
+#define CLIMATE_ALERT_PORT							GPIOA
 #define CLIMATE_ALERT_PIN							GPIO_Pin_7
 
-
+#define CLIMATE_HEATER_PORT							GPIOB
 #define CLIMATE_HEATER_PIN							GPIO_Pin_2
-
 /// Включение печки
-#define CLIMATE_HEATER_OUT
+#define CLIMATE_HEATER_EN							TO_BIT_BAND_PER(CLIMATE_HEATER_PORT->ODR, CLIMATE_HEATER_PIN)
+/*************************************************************************************************************************/
 
+#define CLIMATE_COOLER_PORT							GPIOE
 #define CLIMATE_COOLER_PIN							GPIO_Pin_8
 /// Включение вентилятора
-#define CLIMATE_COOLER_OUT
+#define CLIMATE_COOLER_EN							TO_BIT_BAND_PER(CLIMATE_COOLER_PORT->ODR, CLIMATE_COOLER_PIN)
 ///@}
 
 /**
@@ -313,8 +349,11 @@
  */
 ///@{
 
+#define MISC_STAT_IRQ_PORT							GPIOD
 /// Прерывание от системы управления питанием
 #define MISC_STAT_IRQ_PIN							GPIO_Pin_10
+
+#define MISC_DISCR_IRQ_PORT							GPIOD
 /// Прерывание от дискретных входов на расширителе портов
 #define MISC_DISCR_IRQ_PIN							GPIO_Pin_9
 ///@}

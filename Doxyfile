@@ -870,9 +870,10 @@ EXCLUDE                = ./Debug \
                          ./include/SEGGER_RTT.h \
                          ./include/SEGGER_RTT_Conf.h \
                          ./src/SEGGER_RTT_printf.c \
-                         ./src/system_stm32f10x.c \
                          ./pdf \
-                         ./src/stm32f1xx_it.c
+                         ./src/stm32f1xx_it.c \
+                         ./src/system_stm32f10x.c \
+                         ./include/FreeRTOSConfig.h
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
