@@ -139,9 +139,14 @@ extern uint32_t SystemCoreClock;
 #define configTIMER_TASK_STACK_DEPTH	( configMINIMAL_STACK_SIZE * 2 )
 
 /* Priorities for general purpose tasks */
-#define configTASK_ADC_PRIORITY			(configMAX_PRIORITIES - 2)	// 4, тут почти всегда в блокированном состоянии
-#define configTASK_PID_PRIORITY			(configMAX_PRIORITIES - 1)  // 3, максимально возможный приоритет, обработка данных
-#define configTASK_CAN_PRIORITY			(configMAX_PRIORITIES - 3)  // 2, CAN шина, не критичка для обработки
+#define configTASK_IOE_PRIORITY			(configMAX_PRIORITIES - 1)	// 4
+#define configTASK_CLIMATE_PRIORITY		(configMAX_PRIORITIES - 2)  // 3
+#define configTASK_MAIN_PRIORITY		(tskIDLE_PRIORITY)
+
+
+#define configTASK_IOE_STACK			(configMINIMAL_STACK_SIZE * 2)
+#define configTASK_CLIMATE_STACK		(configMINIMAL_STACK_SIZE * 2)
+#define configTASK_MAIN_STACK			(configMINIMAL_STACK_SIZE * 2)
 
 
 

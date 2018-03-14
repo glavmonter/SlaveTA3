@@ -36,11 +36,12 @@
 #include <stdio.h>
 #include "stm32f10x.h"
 #include "SEGGER_RTT.h"
+#include "hardware.h"
 #include "main.h"
 #include <FreeRTOS.h>
 #include <task.h>
 #include <semphr.h>
-#include "tlsf.h"
+#include "maintask.h"
 
 
 SemaphoreHandle_t xMutexSegger;
@@ -51,8 +52,10 @@ SemaphoreHandle_t xMutexSegger;
 
 /* Private macro */
 /* Private variables */
-static char pool_ram[configTOTAL_HEAP_SIZE] __attribute__ ((aligned(8)));
 /* Private function prototypes */
+static void prvHardwareSetup();
+portTASK_FUNCTION_PROTO(vTestTask1, pvParameters);
+portTASK_FUNCTION_PROTO(vTestTask2, pvParameters);
 /* Private functions */
 
 #if configGENERATE_RUN_TIME_STATS == 1
@@ -73,12 +76,12 @@ volatile unsigned long ulRunTimeStatsClock;
 */
 int main(void) {
 	SystemCoreClockUpdate();
-	init_memory_pool(configTOTAL_HEAP_SIZE, pool_ram);
 
 	xMutexSegger = xSemaphoreCreateRecursiveMutex();
 	SEGGER_RTT_ConfigUpBuffer(0, NULL, NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 	SEGGER_RTT_printf(0, "Hello\n");
 
+	prvHardwareSetup();
 
 TaskHandle_t handle = NULL;
 
@@ -88,12 +91,59 @@ TaskHandle_t handle = NULL;
 	assert_param(handle);
 #endif
 
-	vTaskStartScheduler();
-	for (;;) {
-	}
-	return 0;
+	MainTask &mt = MainTask::Instance();
+	return mt.run();
 }
 
+
+static void prvHardwareSetup() {
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC |
+						   RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOE | RCC_APB2Periph_AFIO, ENABLE);
+
+/*  */
+GPIO_InitTypeDef GPIO_InitStructure;
+	PORTA_DATA4_OUT = PORTA_DATA5_OUT = PORTA_DATA6_OUT = PORTA_DATA7_OUT = 1;
+	PORTB_DATA4_OUT = PORTB_DATA5_OUT = PORTB_DATA6_OUT = PORTB_DATA7_OUT = 1;
+
+	GPIO_InitStructure.GPIO_Pin = PORTA_DATA_OUT_PINS;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(PORTA_DATA_PORT, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PORTB_DATA_OUT_PINS;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
+}
+
+
+portTASK_FUNCTION(vTestTask1, pvParameters) {
+	for (;;) {
+		PORTA_DATA4_OUT ^= 1;
+		vTaskDelay(250);
+		PORTA_DATA5_OUT ^= 1;
+		vTaskDelay(250);
+		PORTA_DATA6_OUT ^= 1;
+		vTaskDelay(250);
+		PORTA_DATA7_OUT ^= 1;
+		vTaskDelay(250);
+		_log("Ping\n");
+	}
+}
+
+portTASK_FUNCTION(vTestTask2, pvParameters) {
+	for (;;) {
+		PORTB_DATA4_OUT ^= 1;
+		vTaskDelay(250);
+		PORTB_DATA5_OUT ^= 1;
+		vTaskDelay(250);
+		PORTB_DATA6_OUT ^= 1;
+		vTaskDelay(250);
+		PORTB_DATA7_OUT ^= 1;
+		vTaskDelay(250);
+		_log("Ping\n");
+	}
+}
 
 #if configGENERATE_RUN_TIME_STATS == 1
 

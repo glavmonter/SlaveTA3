@@ -18,7 +18,6 @@
 #include <semphr.h>
 #include <new>
 #include <stdio.h>
-#include "tlsf.h"
 #include "common.h"
 #include "hardware.h"
 

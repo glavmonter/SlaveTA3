@@ -873,7 +873,8 @@ EXCLUDE                = ./Debug \
                          ./pdf \
                          ./src/stm32f1xx_it.c \
                          ./src/system_stm32f10x.c \
-                         ./include/FreeRTOSConfig.h
+                         ./include/FreeRTOSConfig.h \
+                         Misc
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded

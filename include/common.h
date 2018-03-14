@@ -38,6 +38,9 @@ public:
 	}
 };
 
+
+#define UNUSED(x)	(void)x
+
 template<typename T> T min(T a, T b) {
 	return (a < b) ? a : b;
 }

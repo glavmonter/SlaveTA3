@@ -260,8 +260,12 @@
  */
 ///@{
 #define PORTA_DATA_PORT								GPIOD
-#define PORTA_DATA_OUT								(GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7)
-#define PORTA_DATA_IN								(GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3)
+#define PORTA_DATA_OUT_PINS							(GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7)
+#define PORTA_DATA_IN_PINS							(GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3)
+#define PORTA_DATA4_OUT								TO_BIT_BAND_PER(PORTA_DATA_PORT->ODR, GPIO_Pin_4)
+#define PORTA_DATA5_OUT								TO_BIT_BAND_PER(PORTA_DATA_PORT->ODR, GPIO_Pin_5)
+#define PORTA_DATA6_OUT								TO_BIT_BAND_PER(PORTA_DATA_PORT->ODR, GPIO_Pin_6)
+#define PORTA_DATA7_OUT								TO_BIT_BAND_PER(PORTA_DATA_PORT->ODR, GPIO_Pin_7)
 ///@}
 
 
@@ -279,6 +283,10 @@
 #define PORTB_DATA_PORT								GPIOE
 #define PORTB_DATA_OUT_PINS							(GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7)
 #define PORTB_DATA_IN_PINS							(GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3)
+#define PORTB_DATA4_OUT								TO_BIT_BAND_PER(PORTB_DATA_PORT->ODR, GPIO_Pin_4)
+#define PORTB_DATA5_OUT								TO_BIT_BAND_PER(PORTB_DATA_PORT->ODR, GPIO_Pin_5)
+#define PORTB_DATA6_OUT								TO_BIT_BAND_PER(PORTB_DATA_PORT->ODR, GPIO_Pin_6)
+#define PORTB_DATA7_OUT								TO_BIT_BAND_PER(PORTB_DATA_PORT->ODR, GPIO_Pin_7)
 ///@}
 
 /**
