@@ -66,6 +66,13 @@ portTASK_FUNCTION_PROTO(vStatTask, pvParameters);
 volatile unsigned long ulRunTimeStatsClock;
 #endif
 
+#define APPLICATION_ADDRESS 	0x1FFFF000
+
+
+typedef void (*pFunction)(void);
+
+pFunction Jump_To_Application;
+uint32_t JumpAddress;
 
 /**
 **===========================================================================
@@ -80,6 +87,20 @@ int main(void) {
 	xMutexSegger = xSemaphoreCreateRecursiveMutex();
 	SEGGER_RTT_ConfigUpBuffer(0, NULL, NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 	SEGGER_RTT_printf(0, "Hello\n");
+
+	/*
+	uint32_t stack = 0;
+	stack = *(__IO uint32_t *)APPLICATION_ADDRESS;
+
+	if (stack == 0x200001fc) {
+		JumpAddress = *(__IO uint32_t *)(APPLICATION_ADDRESS + 4);
+		Jump_To_Application = (pFunction)JumpAddress;
+		__set_MSP(*(__IO uint32_t *)APPLICATION_ADDRESS);
+		Jump_To_Application();
+	} else {
+		while (1){}
+	}
+*/
 
 	prvHardwareSetup();
 

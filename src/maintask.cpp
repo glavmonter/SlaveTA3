@@ -25,7 +25,7 @@
 #include "hardware.h"
 #include "maintask.h"
 #include "Climate.h"
-#include "IOExpanders.h"
+//#include "IOExpanders.h"
 
 
 /**
@@ -56,8 +56,8 @@ void MainTask::task() {
 		Climate &clim = Climate::Instance();
 		UNUSED(clim);
 
-		IOExpanders &ioe = IOExpanders::Instance();
-		UNUSED(ioe);
+//		IOExpanders &ioe = IOExpanders::Instance();
+//		UNUSED(ioe);
 	portEXIT_CRITICAL();
 
 	for (;;) {
