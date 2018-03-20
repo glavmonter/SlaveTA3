@@ -20,6 +20,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include "common.h"
+#include "Wiegand.h"
 
 
 /**
@@ -40,6 +41,10 @@ public:
 		while (1)
 			vTaskDelay(portMAX_DELAY);
 	}
+
+private:
+	Wiegand *m_pWiegandCh1;
+	Wiegand *m_pWiegandCh2;
 
 private:
 	MainTask();

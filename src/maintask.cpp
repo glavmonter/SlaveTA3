@@ -24,8 +24,9 @@
 #include <SEGGER_RTT.h>
 #include "hardware.h"
 #include "maintask.h"
-#include "Climate.h"
-#include "IOExpanders.h"
+
+//#include "Climate.h"
+//#include "IOExpanders.h"
 
 
 /**
@@ -53,14 +54,29 @@ int MainTask::run() {
 void MainTask::task() {
 
 	portENTER_CRITICAL();
-		Climate &clim = Climate::Instance();
-		UNUSED(clim);
+		QueueHandle_t xQueueWigand = xQueueCreate(2, sizeof(WiegandStruct));
+		assert_param(xQueueWigand);
 
-		IOExpanders &ioe = IOExpanders::Instance();
-		UNUSED(ioe);
+		m_pWiegandCh1 = new Wiegand(Wiegand::WiegandChannel::Channel_1, xQueueWigand);
+		assert_param(m_pWiegandCh1);
+
+		m_pWiegandCh2 = new Wiegand(Wiegand::WiegandChannel::Channel_2, xQueueWigand);
+		assert_param(m_pWiegandCh2);
+
+//		Climate &clim = Climate::Instance();
+//		UNUSED(clim);
+
+//		IOExpanders &ioe = IOExpanders::Instance();
+//		UNUSED(ioe);
 	portEXIT_CRITICAL();
 
+	vTaskDelay(10);
+
+WiegandStruct ws;
+
 	for (;;) {
-		vTaskDelay(portMAX_DELAY);
+		if (xQueueReceive(xQueueWigand, &ws, portMAX_DELAY) == pdTRUE) {
+			_log("Recive: %d\n", ws.WiegandLen);
+		}
 	}
 }
