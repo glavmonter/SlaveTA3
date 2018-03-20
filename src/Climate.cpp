@@ -34,8 +34,8 @@ Climate::Climate() {
 	m_pSHT30 = new SHT30(m_pI2CDriver, 0x88);
 	assert_param(m_pSHT30);
 
-//	m_pSA56 = new SA56004(m_pI2CDriver, 0x00);
-//	assert_param(m_pSA56);
+	m_pSA56 = new SA56004(m_pI2CDriver, 0x98);
+	assert_param(m_pSA56);
 
 	xTaskCreate(task_climate, "Climate", configTASK_CLIMATE_STACK, this, configTASK_CLIMATE_PRIORITY, &handle);
 }
@@ -47,6 +47,27 @@ void Climate::task() {
 char str[16];
 TickType_t timeout = xTaskGetTickCount();
 
+	m_pSA56->Init();
+	for (;;) {
+		m_pSA56->UpdateData();
+		float T = m_pSA56->GetTemperature(SA56004::Sensor_Internal);
+		FloatToString(str, T, 3, 3);
+		_log("Temperature Local: %s C\n", str);
+
+		T = m_pSA56->GetTemperature(SA56004::Sensor_Remote);
+		FloatToString(str, T, 3, 3);
+		_log("Temperature Remote: %s C\n", str);
+
+		m_pSHT30->UpdateData();
+//		_log("Update: %d\n", ret);
+		T = m_pSHT30->GetTemperature();
+		FloatToString(str, T, 3, 3);
+		_log("Temperature SHT30: %s C\n", str);
+
+		vTaskDelayUntil(&timeout, 2000);
+	}
+
+#if 0
 	for (;;) {
 		uint16_t status;
 		bool ret = m_pSHT30->ReadStatus(status);
@@ -65,6 +86,7 @@ TickType_t timeout = xTaskGetTickCount();
 		_log("Humidity: %s%%\n\n", str);
 		vTaskDelayUntil(&timeout, 2000);
 	}
+#endif
 }
 
 

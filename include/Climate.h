@@ -40,7 +40,7 @@ public:
 private:
 	I2CDriver *m_pI2CDriver = NULL;
 	SHT30 *m_pSHT30 = NULL;
-//	SA56004 *m_pSA56 = NULL;
+	SA56004 *m_pSA56 = NULL;
 
 private:
 	Climate();
