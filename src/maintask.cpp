@@ -26,6 +26,9 @@
 #include "maintask.h"
 
 
+#define DEVICE_NAME			"Slave-arm"
+
+
 static void TimerCallback(TimerHandle_t xTimer) {
 SemaphoreHandle_t sem = static_cast<SemaphoreHandle_t>(pvTimerGetTimerID(xTimer));
 	xSemaphoreGive(sem);
@@ -76,11 +79,36 @@ uint8_t received_byte = 0;
 			_log("Received: 0x%02X\n", received_byte);
 
 			if (m_pWake->ProcessInByte(received_byte) == Wake::STA_READY) {
-				if (m_pWake->GetCommand() == CMD_INFO) {
-					strcpy((char *)m_pWake->TxData, "Hello");
-					m_pWake->ProcessTx(0x01, m_pWake->GetCommand(), sizeof("Hello")-1);
-				}
 				_log("Wake receive data\n");
+				Command cmd = m_pWake->GetCommand();
+
+				switch (cmd) {
+				case CMD_INFO:
+					ProcessCmdInfo();
+					break;
+
+				case CMD_BOOT:
+					ProcessBoot();
+					break;
+
+				case CMD_PORTS_IDR:
+				case CMD_PORTS_ODRR:
+				case CMD_PORTS_ODRW:
+				case CMD_PORTS_SET:
+				case CMD_PORTS_RESET:
+					ProcessPORTs(cmd);
+					break;
+
+				case CMD_WIEGAND_CH1:
+				case CMD_WIEGAND_CH2:
+					ProcessWiegand(cmd);
+					break;
+
+				default:
+					_log("Default: 0x%02X\n", m_pWake->GetCommand());
+					m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+					break;
+				}
 			}
 
 		} else {
@@ -88,6 +116,128 @@ uint8_t received_byte = 0;
 		}
 	}
 }
+
+
+#define DEVICE_ID_BASE_ADDR		0x1FFFF7E8
+#define DEVICE_FLASH_SIZE_REG	0x1FFFF7E0
+
+/**
+ * @brief Подготавливает ответ на команду INFO
+ *
+ * Функция отправляет на вычислитель следующую информацию:
+ * Первые 2 байта - размер флеша в кБ (0х80 0х00)
+ * 12 байт - уникальный ID
+ * Последующие байты - человеко читаемое название
+ */
+void MainTask::ProcessCmdInfo() {
+uint8_t len = 0;
+
+	memcpy(&m_pWake->TxData[len++], (uint16_t *)(DEVICE_FLASH_SIZE_REG), 2);
+	len += 1;
+
+	memcpy(&m_pWake->TxData[len++], (uint16_t *)(DEVICE_ID_BASE_ADDR), 2);
+	len += 1;
+
+	memcpy(&m_pWake->TxData[len++], (uint16_t *)(DEVICE_ID_BASE_ADDR + 0x02), 2);
+	len += 1;
+
+	memcpy(&m_pWake->TxData[len++], (uint32_t *)(DEVICE_ID_BASE_ADDR + 0x04), 4);
+	len += 3;
+
+	memcpy(&m_pWake->TxData[len++], (uint32_t *)(DEVICE_ID_BASE_ADDR + 0x08), 4);
+	len += 3;
+
+	strncpy((char *)&m_pWake->TxData[len], DEVICE_NAME, FRAME_SIZE - len);
+	len += sizeof(DEVICE_NAME) - 1;
+
+	len = (len > FRAME_SIZE) ? FRAME_SIZE : len;
+	m_pWake->ProcessTx(0x01, CMD_INFO, len);
+}
+
+
+/**
+ * @brief Запуск процесса загрузчика
+ * Функция осуществляет защищенную загрущку кода с хоста.
+ *
+ */
+void MainTask::ProcessBoot() {
+	// TODO Проверить валидность входных данных.
+	if (true) {
+		m_pWake->ProcessTx(0x01, CMD_BOOT, 0);
+		vTaskDelay(100);
+		// TODO Switch to boot
+	} else {
+		m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+	}
+}
+
+
+void MainTask::ProcessWiegand(Command cmd) {
+
+}
+
+
+void MainTask::ProcessPORTs(Command cmd) {
+uint8_t porta_idr = (~GPIOD->IDR) & 0x0F;
+uint8_t portb_idr = (~GPIOE->IDR) & 0x0F;
+
+uint8_t porta_odr = ((~GPIOD->ODR) >> 4) & 0x0F;
+uint8_t portb_odr = ((~GPIOE->ODR) >> 4) & 0x0F;
+
+	_log("porta_idr: %02X\n", porta_idr);
+	_log("portb_idr: %02X\n", portb_idr);
+
+	_log("porta_odr: %02X\n", porta_odr);
+	_log("portb_odr: %02X\n", portb_odr);
+
+	if (cmd == CMD_PORTS_IDR) {
+		m_pWake->TxData[0] = porta_idr;
+		m_pWake->TxData[1] = portb_idr;
+		m_pWake->ProcessTx(0x01, CMD_PORTS_IDR, 2);
+		return;
+
+	} else if (cmd == CMD_PORTS_ODRR) {
+		m_pWake->TxData[0] = porta_odr;
+		m_pWake->TxData[1] = portb_odr;
+		m_pWake->ProcessTx(0x01, CMD_PORTS_ODRR, 2);
+		return;
+
+	} else if (cmd == CMD_PORTS_ODRW) {
+		uint8_t odr = m_pWake->RxData[0];
+		PORTA_DATA4_OUT = (odr & 0x01) ? 0 : 1;
+		PORTA_DATA5_OUT = (odr & 0x02) ? 0 : 1;
+		PORTA_DATA6_OUT = (odr & 0x04) ? 0 : 1;
+		PORTA_DATA7_OUT = (odr & 0x08) ? 0 : 1;
+
+		odr = m_pWake->RxData[1];
+		PORTB_DATA4_OUT = (odr & 0x01) ? 0 : 1;
+		PORTB_DATA5_OUT = (odr & 0x02) ? 0 : 1;
+		PORTB_DATA6_OUT = (odr & 0x04) ? 0 : 1;
+		PORTB_DATA7_OUT = (odr & 0x08) ? 0 : 1;
+		m_pWake->ProcessTx(0x01, CMD_PORTS_ODRW, 0);
+		return;
+
+	} else if (cmd == CMD_PORTS_SET) {
+		uint8_t odr = (m_pWake->RxData[0] & 0x0F) << 4;
+		GPIOD->BRR = odr;
+		odr = (m_pWake->RxData[1] & 0x0F) << 4;
+		GPIOE->BRR = odr;
+		m_pWake->ProcessTx(0x01, CMD_PORTS_SET, 0);
+		return;
+
+	} else if (cmd == CMD_PORTS_RESET) {
+		uint8_t odr = (m_pWake->RxData[0] & 0x0F) << 4;
+		GPIOD->BSRR = odr;
+		odr = (m_pWake->RxData[1] & 0x0F) << 4;
+		GPIOE->BSRR = odr;
+		m_pWake->ProcessTx(0x01, CMD_PORTS_RESET, 0);
+		return;
+	}
+
+	_log("Unknown command: 0x%02X\n", cmd);
+	m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+}
+
 
 
 void MainTask::Init() {

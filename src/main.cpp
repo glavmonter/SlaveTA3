@@ -115,6 +115,14 @@ GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
 
+	GPIO_InitStructure.GPIO_Pin = PORTA_DATA_IN_PINS;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_Init(PORTA_DATA_PORT, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PORTB_DATA_IN_PINS;
+	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
+
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 }
 

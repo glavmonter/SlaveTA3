@@ -22,10 +22,20 @@
 #define FRAME_SIZE				32
 
 typedef enum Command_ {
-	CMD_NOP 		= 0x00,
-	CMD_ERR 		= 0x01,
-	CMD_ECHO 		= 0x02,
-	CMD_INFO 		= 0x03,
+	CMD_NOP 						= 0x00,
+	CMD_ERR 						= 0x01,
+	CMD_ECHO 						= 0x02,
+	CMD_INFO 						= 0x03, /// Информация об устройстве
+	CMD_BOOT						= 0x04,	/// Запуск загрузчика для прошивки.
+
+	CMD_PORTS_IDR					= 0x06,	/// Считывание состояния PORTA и PORTB
+	CMD_PORTS_ODRR					= 0x07,	/// Считать значение выходов PORTA и PORTB
+	CMD_PORTS_ODRW					= 0x08, /// Записать значение на выход PORTA и PORTB
+	CMD_PORTS_SET					= 0x09, /// Установить биты PORTA и PORTB
+	CMD_PORTS_RESET 				= 0x10,	/// Сбросить биты PORTA и PORTB
+
+	CMD_WIEGAND_CH1					= 0x11,	/// Считывание Wiegand
+	CMD_WIEGAND_CH2					= 0x12	/// Считывание Wiegand
 
 } Command;
 

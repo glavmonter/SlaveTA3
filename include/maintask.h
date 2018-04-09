@@ -67,6 +67,13 @@ private:
 
 	// External Classes
 	Wake *m_pWake;
+
+
+	/* Process commands */
+	void ProcessCmdInfo();
+	void ProcessBoot();
+	void ProcessWiegand(Command cmd);
+	void ProcessPORTs(Command cmd);
 };
 
 
