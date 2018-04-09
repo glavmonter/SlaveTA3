@@ -141,11 +141,13 @@ extern uint32_t SystemCoreClock;
 /* Priorities for general purpose tasks */
 #define configTASK_IOE_PRIORITY			(configMAX_PRIORITIES - 1)	// 4
 #define configTASK_CLIMATE_PRIORITY		(configMAX_PRIORITIES - 2)  // 3
+#define configTASK_USBSER_PRIORITY		(tskIDLE_PRIORITY)  // 3
 #define configTASK_MAIN_PRIORITY		(tskIDLE_PRIORITY)
 
 
 #define configTASK_IOE_STACK			(configMINIMAL_STACK_SIZE * 2)
 #define configTASK_CLIMATE_STACK		(configMINIMAL_STACK_SIZE * 2)
+#define configTASK_USBSER_STACK			(configMINIMAL_STACK_SIZE * 2)
 #define configTASK_MAIN_STACK			(configMINIMAL_STACK_SIZE * 2)
 
 

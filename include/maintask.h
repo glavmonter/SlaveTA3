@@ -19,7 +19,10 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
+#include <queue.h>
+#include <timers.h>
 #include "common.h"
+#include "Wake.h"
 
 
 /**
@@ -41,13 +44,42 @@ public:
 			vTaskDelay(portMAX_DELAY);
 	}
 
+
+public:
+	USART_TypeDef *m_pUSART = SERIAL_USB_USART;
+	QueueHandle_t xQueueUsartRx;
+
 private:
 	MainTask();
 	~MainTask() {}
 
 	MainTask(MainTask const &) = delete;
 	MainTask& operator= (MainTask const &) = delete;
+
+
+	void InitHardware();
+	void Init();
+
+	// RTOS Objects
+	QueueSetHandle_t xQueueSet;
+	TimerHandle_t xTimer;
+	SemaphoreHandle_t xTimerSemaphore;
+
+	// External Classes
+	Wake *m_pWake;
 };
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void USART1_IRQHandler();
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif /* MAINTASK_H_ */

@@ -43,7 +43,7 @@
  * 		- SERIAL_USB_RX - USART1_RX - PA10 - Альтернативная функция
  */
 ///@{
-#define SERIAL_UST_USART						USART1
+#define SERIAL_USB_USART						USART1
 
 #define SERIAL_USB_TX_PORT						GPIOA
 #define SERIAL_USB_TX_PIN						GPIO_Pin_9
