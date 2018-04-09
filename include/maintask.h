@@ -9,7 +9,7 @@
   * @attention
   * Всем очко!!
   *
-  * <h2><center>&copy; 2016 ФГУП "18 ЦНИИ" МО РФ</center></h2>
+  * <h2><center>&copy; 2018 ООО "РПС"</center></h2>
   ******************************************************************************
   */
 
@@ -23,6 +23,7 @@
 #include <timers.h>
 #include "common.h"
 #include "Wake.h"
+#include "Wiegand.h"
 
 
 /**
@@ -44,6 +45,10 @@ public:
 			vTaskDelay(portMAX_DELAY);
 	}
 
+private:
+	Wiegand *m_pWiegandCh1;
+	Wiegand *m_pWiegandCh2;
+
 
 public:
 	USART_TypeDef *m_pUSART = SERIAL_USB_USART;
@@ -64,6 +69,7 @@ private:
 	QueueSetHandle_t xQueueSet;
 	TimerHandle_t xTimer;
 	SemaphoreHandle_t xTimerSemaphore;
+	QueueHandle_t xQueueWiegand;
 
 	// External Classes
 	Wake *m_pWake;
@@ -72,7 +78,7 @@ private:
 	/* Process commands */
 	void ProcessCmdInfo();
 	void ProcessBoot();
-	void ProcessWiegand(Command cmd);
+	void ProcessWiegand(Command cmd, const WiegandStruct &wig);
 	void ProcessPORTs(Command cmd);
 };
 

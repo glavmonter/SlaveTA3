@@ -9,7 +9,7 @@
   * @attention
   * Всем очко!!
   *
-  * <h2><center>&copy; 2016 ФГУП "18 ЦНИИ" МО РФ</center></h2>
+  * <h2><center>&copy; 2018 ООО "РПС"</center></h2>
   ******************************************************************************
   */
 
@@ -63,11 +63,10 @@ const uint8_t wake_in[] = {0xC0, 0x85, 0x06, 0x07, 0x20, 0xDB, 0xDC, 0x22, 0x23,
 void MainTask::task() {
 	_log("FreeHeap: %d\n", xPortGetFreeHeapSize());
 	Init();
-	_log("Start Timer\n");
-
 	xTimerStart(xTimer, 5);
 
 uint8_t received_byte = 0;
+WiegandStruct wiegand;
 
 	for (;;) {
 		QueueSetHandle_t event = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
@@ -99,9 +98,11 @@ uint8_t received_byte = 0;
 					ProcessPORTs(cmd);
 					break;
 
-				case CMD_WIEGAND_CH1:
-				case CMD_WIEGAND_CH2:
-					ProcessWiegand(cmd);
+				case CMD_WIEGAND:
+					if (xQueueReceive(xQueueWiegand, &wiegand, 1) == pdTRUE)
+						ProcessWiegand(CMD_WIEGAND, wiegand);
+					else
+						m_pWake->ProcessTx(0x01, CMD_ERR, 0);
 					break;
 
 				default:
@@ -110,6 +111,10 @@ uint8_t received_byte = 0;
 					break;
 				}
 			}
+
+		} else if (event == xQueueWiegand) {
+			xQueueReceive(event, &wiegand, 0);
+			ProcessWiegand(CMD_WIEGAND, wiegand);
 
 		} else {
 			_log("!!!Pizda!!!\n");
@@ -172,8 +177,13 @@ void MainTask::ProcessBoot() {
 }
 
 
-void MainTask::ProcessWiegand(Command cmd) {
+void MainTask::ProcessWiegand(Command cmd, const WiegandStruct &wig) {
 
+uint8_t max_bytes = wig.WiegandLen / BITS_IN_BYTE + ((wig.WiegandLen % BITS_IN_BYTE) ? 1 : 0);
+	m_pWake->TxData[0] = wig.Channel;
+	m_pWake->TxData[1] = wig.WiegandLen;
+	memcpy(&m_pWake->TxData[2], wig.Data, max_bytes);
+	m_pWake->ProcessTx(0x01, cmd, max_bytes + 2);
 }
 
 
@@ -257,11 +267,21 @@ void MainTask::Init() {
 		xQueueUsartRx = xQueueCreate(20, sizeof(uint8_t));
 		assert_param(xQueueUsartRx);
 
-		xQueueSet = xQueueCreateSet(1 + 20);
+		xQueueWiegand = xQueueCreate(2, sizeof(WiegandStruct));
+		assert_param(xQueueWiegand);
+
+		xQueueSet = xQueueCreateSet(1 + 20 + 0);
 		assert_param(xQueueSet);
 
 		xQueueAddToSet(xTimerSemaphore, xQueueSet);
 		xQueueAddToSet(xQueueUsartRx, xQueueSet);
+		xQueueAddToSet(xQueueWiegand, xQueueSet);
+
+		m_pWiegandCh1 = new Wiegand(Wiegand::Channel_1, xQueueWiegand);
+		assert_param(m_pWiegandCh1);
+
+		m_pWiegandCh2 = new Wiegand(Wiegand::Channel_2, xQueueWiegand);
+		assert_param(m_pWiegandCh2);
 	portEXIT_CRITICAL();
 }
 

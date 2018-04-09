@@ -34,8 +34,7 @@ typedef enum Command_ {
 	CMD_PORTS_SET					= 0x09, /// Установить биты PORTA и PORTB
 	CMD_PORTS_RESET 				= 0x10,	/// Сбросить биты PORTA и PORTB
 
-	CMD_WIEGAND_CH1					= 0x11,	/// Считывание Wiegand
-	CMD_WIEGAND_CH2					= 0x12	/// Считывание Wiegand
+	CMD_WIEGAND						= 0x11,	/// Считывание Wiegand
 
 } Command;
 
