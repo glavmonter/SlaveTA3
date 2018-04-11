@@ -128,14 +128,45 @@ uint16_t ioe_responce;
 				case CMD_RELAYS_ODRR:
 					ioe_cmd.cmd = cmd;
 					xQueueSend(IOExpanders::Instance().xQueueCommands, &ioe_cmd, 1);
-					if (xQueueReceive(IOExpanders::Instance().xQueueResponce, &ioe_responce, 100) == pdTRUE) {
+					if (xQueueReceive(IOExpanders::Instance().xQueueResponce, &ioe_responce, 10) == pdTRUE) {
 						_log("RI Ok\n");
 						m_pWake->TxData[0] = (ioe_responce >> 8);
 						m_pWake->TxData[1] = (ioe_responce & 0x00FF);
 						m_pWake->ProcessTx(0x01, cmd, 2);
 					} else {
-						_log("RI Err\n");
-						m_pWake->ProcessTx(0x01, CMD_ERR, 2);
+						_log("Relays RI Err\n");
+						m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+					}
+					break;
+
+				case CMD_POWERS_IDR:
+				case CMD_POWERS_ODRR:
+					ioe_cmd.cmd = cmd;
+					xQueueSend(IOExpanders::Instance().xQueueCommands, &ioe_cmd, 1);
+					if (xQueueReceive(IOExpanders::Instance().xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+						_log("Power RI Ok\n");
+						m_pWake->TxData[0] = ioe_responce >> 8;
+						m_pWake->TxData[1] = ioe_responce & 0x00FF;
+						m_pWake->ProcessTx(0x01, cmd, 2);
+					} else {
+						_log("Power RI Err\n");
+						m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+					}
+					break;
+
+				case CMD_POWERS_ORRW:
+				case CMD_POWERS_RESET:
+				case CMD_POWERS_SET:
+					ioe_cmd.cmd = cmd;
+					ioe_cmd.data[0] = m_pWake->RxData[0];
+					ioe_cmd.data[1] = m_pWake->RxData[1];
+					xQueueSend(IOExpanders::Instance().xQueueCommands, &ioe_cmd, 1);
+					if (xQueueReceive(IOExpanders::Instance().xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+						_log("Power set ok\n");
+						m_pWake->ProcessTx(0x01, cmd, 0);
+					} else {
+						_log("Power set err\n");
+						m_pWake->ProcessTx(0x01, CMD_ERR, 0);
 					}
 					break;
 

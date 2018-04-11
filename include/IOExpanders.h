@@ -85,6 +85,12 @@ protected:
 	uint16_t RelaysRead();
 	uint16_t RelaysReadIDR();
 
+	uint16_t PowerRead();
+	bool PowerWrite(uint16_t data);
+	bool PowerWrite(uint8_t gpioa, uint8_t gpiob);
+	bool PowerWriteOnes(uint16_t data);
+	bool PowerWriteZeros(uint16_t data);
+
 private:
 	I2C_TypeDef *m_pI2C = I2C1;
 

@@ -138,8 +138,32 @@ uint16_t resp = false;
 				break;
 
 			case CMD_RELAYS_IDR:
-//				resp = RelaysReadIDR();
 				xQueueOverwrite(xQueueResponce, &idr_last);
+				break;
+
+			case CMD_POWERS_IDR:
+				resp = 0;
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_POWERS_ODRR:
+				resp = PowerRead();
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_POWERS_ORRW:
+				resp = PowerWrite((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_POWERS_SET:
+				resp = PowerWriteOnes((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_POWERS_RESET:
+				resp = PowerWriteZeros((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
 				break;
 
 			default:
@@ -163,6 +187,98 @@ uint16_t resp = false;
 }
 
 
+uint16_t IOExpanders::PowerRead() {
+bool ret;
+uint8_t retries;
+uint8_t gpioa, gpiob;
+
+	retries = 10;
+	do {
+		ret = ReadRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::GPIOXA(), gpioa);
+		if (ret == false)
+			_log("Read Power1 Err {%d}\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+
+	retries = 10;
+	do {
+		ret = ReadRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::GPIOXB(), gpiob);
+		if (ret == false)
+			_log("Read Power2 Err {%d}\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+
+uint16_t out   = ((gpiob & 0x10) >> 4) |
+				 ((gpiob & 0x08) >> 2) |
+				 ((gpiob & 0x04) >> 0) |
+				 ((gpiob & 0x02) << 2) |
+				 ((gpiob & 0x01) << 4);
+
+uint16_t gpioa_ = ((gpioa & 0x80) >> 7) |
+				 ((gpioa & 0x40) >> 5) |
+				 ((gpioa & 0x20) >> 3) |
+				 ((gpioa & 0x10) >> 1) |
+				 ((gpioa & 0x08) << 1);
+
+	return out | (gpioa_ << 5);
+}
+
+
+bool IOExpanders::PowerWrite(uint8_t gpioa, uint8_t gpiob) {
+bool ret;
+uint8_t retries;
+	retries = 10;
+	do {
+		ret = WriteRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::GPIOXA(), gpioa);
+		if (ret == false)
+			_log("Write1 Power Err {%d}\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+	if (retries == 0)
+		return false;
+
+	retries = 10;
+	do {
+		ret = WriteRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::GPIOXB(), gpiob);
+		if (ret == false)
+			_log("Write2 Power Err {%d}\n", retries);
+	} while ((ret == false) and (retries > 0));
+	if (retries == 0)
+		return false;
+
+	return true;
+}
+
+
+bool IOExpanders::PowerWrite(uint16_t data) {
+uint8_t gpioa = ((data & 0x0020) << 2) |
+				((data & 0x0040) << 0) |
+				((data & 0x0080) >> 2) |
+				((data & 0x0100) >> 4) |
+				((data & 0x0200) >> 6);
+
+uint8_t gpiob = ((data & 0x0001) << 4) |
+				((data & 0x0002) << 2) |
+				((data & 0x0004) << 0) |
+				((data & 0x0008) >> 2) |
+				((data & 0x0010) >> 4);
+
+	return PowerWrite(gpioa, gpiob);
+}
+
+bool IOExpanders::PowerWriteOnes(uint16_t data) {
+uint16_t odr = PowerRead();
+	odr |= data;
+	return PowerWrite(data);
+}
+
+bool IOExpanders::PowerWriteZeros(uint16_t data) {
+uint16_t odr = PowerRead();
+	odr &= ~data;
+	return PowerWrite(odr);
+}
+
+
 /**
  * @brief Записать данные в регистры выходных реле
  * @param data_l - младшие 5 выходов
@@ -170,10 +286,30 @@ uint16_t resp = false;
  * @retval true - в случае успешности
  */
 bool IOExpanders::RelaysWrite(uint8_t data_l, uint8_t data_h) {
-bool ret1, ret2;
-	ret1 = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), data_l);
-	ret2 = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), data_h);
-	return ret1 & ret2;
+bool ret;
+uint8_t retries;
+
+	retries = 10;
+	do {
+		ret = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), data_l);
+		if (ret == false)
+			_log("Write Relay1 Err {%d}\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+	if (retries == 0)
+		return false;
+
+	retries = 10;
+	do {
+		ret = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), data_h);
+		if (ret == false)
+			_log("Write Relay2 Err {%d}\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+	if (retries == 0)
+		return false;
+
+	return true;
 }
 
 
@@ -341,6 +477,13 @@ bool ret;
 
 	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), 0x00);
 	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::IODIRB(), 0x00);
+
+
+	// Set Powers to Output zero
+	WriteRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::GPIOXA(), 0x00);
+	WriteRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::IODIRA(), 0x00);
+	WriteRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::GPIOXB(), 0x00);
+	WriteRegister(IOE_ADDR_POWER, MCP23017<BANK_1>::IODIRB(), 0x00);
 }
 
 
