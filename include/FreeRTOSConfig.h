@@ -118,7 +118,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_COUNTING_SEMAPHORES	0
 
 #ifdef DEBUG
-#define configGENERATE_RUN_TIME_STATS	0
+#define configGENERATE_RUN_TIME_STATS	1
 #else
 #define configGENERATE_RUN_TIME_STATS	0
 #endif
@@ -135,17 +135,21 @@ extern uint32_t SystemCoreClock;
 /* Software timer definitions. */
 #define configUSE_TIMERS				1
 #define configTIMER_TASK_PRIORITY		( 2 )
-#define configTIMER_QUEUE_LENGTH		10
+#define configTIMER_QUEUE_LENGTH		20
 #define configTIMER_TASK_STACK_DEPTH	( configMINIMAL_STACK_SIZE * 2 )
 
 /* Priorities for general purpose tasks */
 #define configTASK_IOE_PRIORITY			(configMAX_PRIORITIES - 1)	// 4
 #define configTASK_CLIMATE_PRIORITY		(configMAX_PRIORITIES - 2)  // 3
+#define configTASK_USBSER_PRIORITY		(tskIDLE_PRIORITY)  // 3
+#define configTASK_WIEGAND_PRIORITY		(configMAX_PRIORITIES - 2)	// 3
 #define configTASK_MAIN_PRIORITY		(tskIDLE_PRIORITY)
 
 
 #define configTASK_IOE_STACK			(configMINIMAL_STACK_SIZE * 2)
 #define configTASK_CLIMATE_STACK		(configMINIMAL_STACK_SIZE * 2)
+#define configTASK_USBSER_STACK			(configMINIMAL_STACK_SIZE * 2)
+#define configTASK_WIEGAND_STACK		(configMINIMAL_STACK_SIZE * 2)
 #define configTASK_MAIN_STACK			(configMINIMAL_STACK_SIZE * 2)
 
 

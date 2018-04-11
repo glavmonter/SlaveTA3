@@ -59,7 +59,7 @@ portTASK_FUNCTION_PROTO(vTestTask2, pvParameters);
 /* Private functions */
 
 #if configGENERATE_RUN_TIME_STATS == 1
-#error Configure timers first!!!
+//#error Configure timers first!!!
 
 static void setupRunTimeStats();
 portTASK_FUNCTION_PROTO(vStatTask, pvParameters);
@@ -114,6 +114,16 @@ GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PORTA_DATA_IN_PINS;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_Init(PORTA_DATA_PORT, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PORTB_DATA_IN_PINS;
+	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 }
 
 
@@ -151,16 +161,16 @@ static void setupRunTimeStats() {
 TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 NVIC_InitTypeDef NVIC_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 	TIM_TimeBaseStructure.TIM_Period = (uint16_t)(SystemCoreClock/20000) - 1;
 	TIM_TimeBaseStructure.TIM_Prescaler = 0;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
-	TIM_ITConfig(TIM7, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 
 	NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
@@ -168,12 +178,12 @@ NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	TIM_Cmd(TIM7, ENABLE);
+	TIM_Cmd(TIM4, ENABLE);
 }
 
-void TIM7_IRQHandler() {
-	if (TIM_GetITStatus(TIM7, TIM_IT_Update)) {
-		TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
+void TIM4_IRQHandler() {
+	if (TIM_GetITStatus(TIM4, TIM_IT_Update)) {
+		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 		ulRunTimeStatsClock++;
 	}
 }

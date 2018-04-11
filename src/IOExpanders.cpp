@@ -44,35 +44,236 @@
 																} \
 															} while (0);
 
-#define IOE_TX_DATA_SIZE		32
-uint8_t tx_data[IOE_TX_DATA_SIZE] __attribute__((aligned(8)));
+#define MAX_PWM_DATA		32
+uint8_t pwm_data[MAX_PWM_DATA] __attribute__((aligned(8)));
+
+
+static void TimerCallback(TimerHandle_t xTimer) {
+	xSemaphoreGive(static_cast<SemaphoreHandle_t>(pvTimerGetTimerID(xTimer)));
+}
 
 
 IOExpanders::IOExpanders() {
-	memset(tx_data, 0, sizeof(tx_data));
+	memset(pwm_data, 0, sizeof(pwm_data));
 	InitHardware();
+
+	xSemaphoreDiscretIrq = xSemaphoreCreateBinary();
+	assert_param(xSemaphoreDiscretIrq);
+	xSemaphoreTake(xSemaphoreDiscretIrq, 0);
+
+	xSemaphoreTimer = xSemaphoreCreateBinary();
+	assert_param(xSemaphoreTimer);
+	xSemaphoreTake(xSemaphoreTimer, 0);
+
+	xQueueCommands = xQueueCreate(5, sizeof(IOECommand));
+	assert_param(xQueueCommands);
+
+	xQueueSet = xQueueCreateSet(1 + 5 + 2);
+	assert_param(xQueueSet);
+
+	xQueueAddToSet(xSemaphoreDiscretIrq, xQueueSet);
+	xQueueAddToSet(xSemaphoreTimer, xQueueSet);
+	xQueueAddToSet(xQueueCommands, xQueueSet);
+
+	xQueueResponce = xQueueCreate(1, sizeof(uint16_t));
+	assert_param(xQueueResponce);
+
+	xTimer = xTimerCreate("IOE", 5, pdTRUE, xSemaphoreTimer, TimerCallback);
+	assert_param(xTimer);
+
 	xTaskCreate(task_expanders, "IOExp", configMINIMAL_STACK_SIZE*2, this, configTASK_IOE_PRIORITY, &handle);
 }
-
 
 
 void IOExpanders::task() {
 	_log("Start\n");
 
+	ResetHardware();
+
 	ConfigureExpanders();
 	vTaskDelay(5);
+
+uint16_t idr = 0;
+uint16_t idr_last = 0;
+
+uint16_t resp = false;
+
+//	xTimerStart(xTimer, 0);
+	xSemaphoreGive(xSemaphoreTimer);
+
+	for (;;) {
+		QueueSetMemberHandle_t event = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+		if (event == xSemaphoreDiscretIrq) {
+			xSemaphoreTake(event, 0);
+			vTaskDelay(5);
+			idr = RelaysReadIDR();
+			if (idr != idr_last) {
+				_log("IDRi: 0x%04X\n", idr);
+				idr_last = idr;
+			}
+
+		} else if (event == xQueueCommands) {
+			IOECommand cmd;
+			xQueueReceive(event, &cmd, 0);
+
+			switch (cmd.cmd) {
+			case CMD_RELAYS_ODRR:
+				resp = RelaysRead();
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_RELAYS_ODRW:
+				resp = RelaysWrite((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_RELAYS_RESET:
+				resp = RelaysWriteZeros((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_RELAYS_SET:
+				resp = RelaysWriteOnes((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_RELAYS_IDR:
+//				resp = RelaysReadIDR();
+				xQueueOverwrite(xQueueResponce, &idr_last);
+				break;
+
+			default:
+				_log("Unknown Command\n");
+				break;
+			}
+
+		} else if (event == xSemaphoreTimer){
+			xSemaphoreTake(event, 0);
+
+			idr = RelaysReadIDR();
+			if (idr != idr_last) {
+				_log("IDR: 0x%04X\n", idr);
+				idr_last = idr;
+			}
+
+		} else {
+			_log("Hui\n");
+		}
+	}
+}
+
+
+/**
+ * @brief Записать данные в регистры выходных реле
+ * @param data_l - младшие 5 выходов
+ * @param data_h - старшие 5 выходов
+ * @retval true - в случае успешности
+ */
+bool IOExpanders::RelaysWrite(uint8_t data_l, uint8_t data_h) {
+bool ret1, ret2;
+	ret1 = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), data_l);
+	ret2 = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), data_h);
+	return ret1 & ret2;
+}
+
+
+/**
+ * @brief Записать данные в регистры выходных реле
+ * @param data - 10 бит данных выходных реле
+ * @retval true - в случае успешности
+ */
+bool IOExpanders::RelaysWrite(uint16_t data) {
+uint8_t data_l, data_h;
+	data_l = data & 0x1F;
+	data_h = (data & 0x3E0) >> 5;
+	return RelaysWrite(data_l, data_h);
+}
+
+
+bool IOExpanders::RelaysWriteOnes(uint16_t data) {
+uint16_t odr = RelaysRead();
+	odr |= data;
+	return RelaysWrite(odr);
+}
+
+bool IOExpanders::RelaysWriteZeros(uint16_t data) {
+uint16_t odr = RelaysRead();
+	odr &= ~data;
+	return RelaysWrite(odr);
+}
+
+
+uint16_t IOExpanders::RelaysRead() {
+uint8_t data_l, data_h;
+
+bool ret;
+uint8_t retries;
+
+	retries = 10;
+	do {
+		ret = ReadRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), data_l);
+		if (ret == false)
+			_log("Read1 {%d}: Err\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+
+	retries = 10;
+	do {
+		ret = ReadRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), data_h);
+		if (ret == false)
+			_log("Read2 {%d}: Err\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+
+	return (data_h << 5) | data_l;
+}
+
+
+uint16_t IOExpanders::RelaysReadIDR() {
+bool ret;
+uint8_t retries;
+uint16_t idr;
+
+	retries = 10;
+	do {
+		ret = ReadRegister(IOE_ADDR_INPUTS, MCP23017<BANK_0>::GPIOXA(), idr);
+		if (ret == false)
+			_log("Read16 {%d}: Err\n", retries);
+		retries--;
+	} while ((ret == false) and (retries > 0));
+
+uint8_t low = ((idr & 0x80) >> 7) |
+			  ((idr & 0x40) >> 5) |
+			  ((idr & 0x20) >> 3) |
+			  ((idr & 0x10) >> 1) |
+			  ((idr & 0x08) << 1);
+
+	low |=	  ((idr & 0x0100) >> 3) |
+			  ((idr & 0x0200) >> 3) |
+			  ((idr & 0x0400) >> 3);
+
+uint8_t high = ((idr & 0x0800) >> 11) |
+			   ((idr & 0x1000) >> 11);
+
+	return (high << 8) | low;
+}
+
+
+void IOExpanders::SelfTest() {
 	StartDMA();
 
-	for (int i = 0; i <= IOE_TX_DATA_SIZE; i++) {
+uint8_t ch = 4;
+
+	for (int i = 0; i <= MAX_PWM_DATA; i++) {
 		vTaskDelay(100);
-		CalcPWMData(tx_data, 0, i);
+		CalcPWMData(pwm_data, ch, i);
 	}
 	vTaskDelay(100);
 
-	CalcPWMData(tx_data, 0, 0);
+	CalcPWMData(pwm_data, ch, 0);
 	vTaskDelay(100);
 
-	CalcPWMData(tx_data, 0, IOE_TX_DATA_SIZE);
+	CalcPWMData(pwm_data, ch, MAX_PWM_DATA);
 	vTaskDelay(100);
 
 	StopDMA();
@@ -80,13 +281,25 @@ void IOExpanders::task() {
 	vTaskDelay(100);
 	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), 0x00);
 
+	vTaskDelay(100);
+	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), 0xFF);
+	vTaskDelay(100);
+	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), 0x00);
+
+	vTaskDelay(100);
+	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), 0xFF);
+	WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXB(), 0x00);
+
+TickType_t stoptime = xTaskGetTickCount() + 10000;
 	for (;;) {
 		uint16_t r16;
 		ReadRegister(IOE_ADDR_INPUTS, MCP23017<BANK_0>::GPIOXA(), r16);
 		_log("Input: 0x%04X\n", r16);
 		vTaskDelay(250);
-	}
 
+		if (xTaskGetTickCount() > stoptime)
+			break;
+	}
 }
 
 
@@ -95,13 +308,12 @@ bool ret;
 	/* Включаем режим двух банков и отключаем режим инкрементирования адреса */
 	ret = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_0>::IOCONA(),
 			MCP23017_IOCON_BANK(1) | MCP23017_IOCON_SEQOP(1));
-	_log("%d\n", ret);
+
 	if (ret == false) {
 		ret = ResetHardware();
 		ret = WriteRegister(IOE_ADDR_RELAYS, MCP23017<BANK_0>::IOCONA(),
 				MCP23017_IOCON_BANK(1) | MCP23017_IOCON_SEQOP(1));
 	}
-	_log("%d\n", ret);
 
 	ret = WriteRegister(IOE_ADDR_POWER,  MCP23017<BANK_0>::IOCONA(),
 			MCP23017_IOCON_BANK(1) | MCP23017_IOCON_SEQOP(1));
@@ -341,7 +553,7 @@ void IOExpanders::ConfigureDMA() {
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 DMA_InitTypeDef DMA_InitStructure;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&m_pI2C->DR;
-	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)tx_data;
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)pwm_data;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
@@ -350,7 +562,7 @@ DMA_InitTypeDef DMA_InitStructure;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_Low;
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
-	DMA_InitStructure.DMA_BufferSize = IOE_TX_DATA_SIZE * sizeof(tx_data[0]);
+	DMA_InitStructure.DMA_BufferSize = MAX_PWM_DATA * sizeof(pwm_data[0]);
 
 	DMA_DeInit(DMA1_Channel6);
 	DMA_Init(DMA1_Channel6, &DMA_InitStructure);
@@ -359,15 +571,18 @@ DMA_InitTypeDef DMA_InitStructure;
 /**
  * @brief Вычисление регистра ШИМ
  * @param pData - Массив циклических данных, что передается через DMA
- * @param channel - Номер канала ШИМ (0..5)
- * @param value - Величина ШИМ (0..IOE_TX_DATA_SIZE)
+ * @param channel - Номер канала ШИМ [0..4]
+ * @param value - Величина ШИМ [0..MAX_PWM_DATA]
  *
  * В функции вычисляется значения элементов массива для обеспечения корректных данных для реализации ШИМ.
  * В соответствии с каналом выставляется необходимое количество единиц в элементах массива pData.
  */
 void IOExpanders::CalcPWMData(uint8_t *pData, uint8_t channel, uint8_t value) {
 int32_t tpwm = value;
-	for (int i = 0; i < IOE_TX_DATA_SIZE; i++) {
+	if (channel > 4)
+		return;
+
+	for (int i = 0; i < MAX_PWM_DATA; i++) {
 		if (tpwm > 0) {
 			pData[i] |= 1 << channel;
 		} else {
@@ -502,8 +717,12 @@ TickType_t timeout = xTaskGetTickCount() + 50;
 
 
 void EXTI9_5_IRQHandler() {
+BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
 	if (EXTI_GetITStatus(EXTI_Line9) != RESET) {
 		EXTI_ClearITPendingBit(EXTI_Line9);
+		xSemaphoreGiveFromISR(IOExpanders::Instance().xSemaphoreDiscretIrq, &xHigherPriorityTaskWoken);
 	}
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 

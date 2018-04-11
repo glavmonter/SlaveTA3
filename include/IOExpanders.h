@@ -19,12 +19,20 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
+#include <semphr.h>
+#include <timers.h>
 #include <stm32f10x.h>
 #include "common.h"
+#include "Wake.h"
 
 #define BANK_0		false
 #define BANK_1		!BANK_0
 
+
+typedef struct IOECommand_ {
+	Command cmd;
+	uint8_t data[2];
+} IOECommand;
 
 
 class IOExpanders : public TaskBase {
@@ -40,6 +48,13 @@ public:
 		while (1)
 			vTaskDelay(portMAX_DELAY);
 	}
+
+	SemaphoreHandle_t xSemaphoreDiscretIrq;
+	SemaphoreHandle_t xSemaphoreTimer;
+	QueueHandle_t xQueueCommands;
+	QueueHandle_t xQueueResponce;
+
+	QueueSetHandle_t xQueueSet;
 
 private:
 	IOExpanders();
@@ -60,12 +75,23 @@ protected:
 
 	bool ResetHardware();
 
+	TimerHandle_t xTimer;
+
+	bool RelaysWrite(uint8_t data_l, uint8_t data_h);
+	bool RelaysWrite(uint16_t data);
+	bool RelaysWriteOnes(uint16_t data);
+	bool RelaysWriteZeros(uint16_t data);
+
+	uint16_t RelaysRead();
+	uint16_t RelaysReadIDR();
+
 private:
 	I2C_TypeDef *m_pI2C = I2C1;
 
 	void ConfigureDMA();
 	void InitHardware();
 
+	void SelfTest();
 	bool Test();
 };
 
