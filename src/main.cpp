@@ -83,9 +83,18 @@ int main(void) {
 
 	prvHardwareSetup();
 
-TaskHandle_t handle = NULL;
+	if ((BKP_ReadBackupRegister(BKP_DR1) == 0x1234) and
+		(BKP_ReadBackupRegister(BKP_DR5) == 0xCE94)) {
+
+		BKP_WriteBackupRegister(BKP_DR1, 0x0000);
+		BKP_WriteBackupRegister(BKP_DR5, 0x0000);
+
+		/* Start Bootloader */
+		StartExternalApp(0x1FFFF000);
+	}
 
 #if configGENERATE_RUN_TIME_STATS == 1
+TaskHandle_t handle = NULL;
 	setupRunTimeStats();
 	xTaskCreate(vStatTask, "Stat", configMINIMAL_STACK_SIZE*3, NULL, tskIDLE_PRIORITY, &handle);
 	assert_param(handle);
@@ -99,6 +108,9 @@ TaskHandle_t handle = NULL;
 static void prvHardwareSetup() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC |
 						   RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOE | RCC_APB2Periph_AFIO, ENABLE);
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR, ENABLE);
+	PWR_BackupAccessCmd(ENABLE);
 
 /*  */
 GPIO_InitTypeDef GPIO_InitStructure;

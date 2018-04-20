@@ -25,6 +25,9 @@
 #include "Wake.h"
 #include "Wiegand.h"
 
+
+uint32_t StartExternalApp(uint32_t address);
+
 /**
  * @class MainTask
  */

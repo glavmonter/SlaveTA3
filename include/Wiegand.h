@@ -33,8 +33,8 @@
 class Wiegand : public TaskBase {
 public:
 	enum WiegandChannel {
-		Channel_1,
-		Channel_2
+		Channel_1 = 1,
+		Channel_2 = 2
 	};
 
 	Wiegand(WiegandChannel channel, QueueHandle_t result_queue);

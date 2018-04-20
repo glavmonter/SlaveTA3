@@ -29,10 +29,34 @@
 
 #define DEVICE_NAME			"Slave-arm"
 
+__attribute__ ((section(".vars_version_sect")))
+__IO const uint32_t device_version = 0x00000001;
+
+__attribute__ ((section(".vars_key_sect")))
+__IO const uint8_t key[] = {0x64, 0xCA, 0x56, 0xBA, 0x15, 0x57, 0x63, 0x39, 0xDA, 0x57, 0x40, 0x21};
+
+
 
 static void TimerCallback(TimerHandle_t xTimer) {
 SemaphoreHandle_t sem = static_cast<SemaphoreHandle_t>(pvTimerGetTimerID(xTimer));
 	xSemaphoreGive(sem);
+}
+
+
+typedef void (*pFunction)(void);
+#define BOOTLOADER_ADDRESS				0x1FFFF000
+
+
+uint32_t StartExternalApp(uint32_t address) {
+	if (((*(__IO uint32_t *)address) & 0x2FFC0000) == 0x20000000) {
+		__IO uint32_t JumpAddress = *(__IO uint32_t *)(address + 4);
+		pFunction Jump_to_app = (pFunction)JumpAddress;
+		__set_MSP(*(__IO uint32_t *)address);
+		Jump_to_app();
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 
@@ -202,6 +226,7 @@ uint16_t ioe_responce;
 void MainTask::ProcessCmdInfo() {
 uint8_t len = 0;
 
+#if 1
 	memcpy(&m_pWake->TxData[len++], (uint16_t *)(DEVICE_FLASH_SIZE_REG), 2);
 	len += 1;
 
@@ -217,11 +242,28 @@ uint8_t len = 0;
 	memcpy(&m_pWake->TxData[len++], (uint32_t *)(DEVICE_ID_BASE_ADDR + 0x08), 4);
 	len += 3;
 
+	_log("DeviceVersion Address: 0x%08X\n", (uint32_t)&device_version);
+	memcpy(&m_pWake->TxData[len++], (void *)&device_version, 4);
+	len += 3;
+
 	strncpy((char *)&m_pWake->TxData[len], DEVICE_NAME, FRAME_SIZE - len);
 	len += sizeof(DEVICE_NAME) - 1;
 
 	len = (len > FRAME_SIZE) ? FRAME_SIZE : len;
 	m_pWake->ProcessTx(0x01, CMD_INFO, len);
+#else
+
+	m_pWake->TxData[0] = 0x49;
+	m_pWake->TxData[1] = 0xC0;
+	m_pWake->TxData[2] = 0x64;
+	m_pWake->TxData[3] = 0xDB;
+	m_pWake->TxData[4] = 0xDB;
+	m_pWake->TxData[5] = 0xFF;
+	m_pWake->TxData[6] = 0xC0;
+	m_pWake->TxData[7] = 0xDB;
+
+	m_pWake->ProcessTx(0x01, CMD_INFO, 8);
+#endif
 }
 
 
@@ -231,11 +273,38 @@ uint8_t len = 0;
  *
  */
 void MainTask::ProcessBoot() {
-	// TODO Проверить валидность входных данных.
-	if (true) {
+	_log("Process Boot\n");
+
+#define KEY_SIZE	12
+uint8_t uid[KEY_SIZE];
+uint8_t cipher[KEY_SIZE];
+
+	memcpy(&uid[0], (uint16_t *)(DEVICE_ID_BASE_ADDR       ), 2);
+	memcpy(&uid[2], (uint16_t *)(DEVICE_ID_BASE_ADDR + 0x02), 2);
+	memcpy(&uid[4], (uint32_t *)(DEVICE_ID_BASE_ADDR + 0x04), 4);
+	memcpy(&uid[8], (uint32_t *)(DEVICE_ID_BASE_ADDR + 0x08), 4);
+
+	memcpy(cipher, &m_pWake->RxData[0], KEY_SIZE);
+
+	for (int i = 0; i < KEY_SIZE; i++) {
+		cipher[i] = cipher[i] ^ key[i];
+	}
+
+	bool Valid = true;
+	for (int i = 0; i < KEY_SIZE; i++) {
+		Valid &= (cipher[i] == uid[i]);
+	}
+	memset(uid, 0, KEY_SIZE);
+	memset(cipher, 0, KEY_SIZE);
+
+	if (Valid) {
+		_log("Change to Boot\n");
 		m_pWake->ProcessTx(0x01, CMD_BOOT, 0);
+		BKP_WriteBackupRegister(BKP_DR1, 0x1234);
+		BKP_WriteBackupRegister(BKP_DR5, 0xCE94);
+
 		vTaskDelay(100);
-		// TODO Switch to boot
+		NVIC_SystemReset();
 	} else {
 		m_pWake->ProcessTx(0x01, CMD_ERR, 0);
 	}
@@ -377,7 +446,7 @@ USART_InitTypeDef USART_InitStructure;
 	NVIC_Init(&NVIC_InitStructure);
 
 
-	USART_InitStructure.USART_BaudRate = 9600;
+	USART_InitStructure.USART_BaudRate = 115200;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_2;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
