@@ -27,6 +27,12 @@
 #include "Climate.h"
 
 
+static void TimerCallback(TimerHandle_t xTimer) {
+SemaphoreHandle_t sem = static_cast<SemaphoreHandle_t>(pvTimerGetTimerID(xTimer));
+	xSemaphoreGive(sem);
+}
+
+
 Climate::Climate() {
 	m_pI2CDriver = new I2CDriver(I2C2);
 	assert_param(m_pI2CDriver);
@@ -37,6 +43,30 @@ Climate::Climate() {
 	m_pSA56 = new SA56004(m_pI2CDriver, 0x98);
 	assert_param(m_pSA56);
 
+	xSemaphoreTimer1s = xSemaphoreCreateBinary();
+	assert_param(xSemaphoreTimer1s);
+	xSemaphoreTake(xSemaphoreTimer1s, 0);
+
+	xSemaphoreTimer60s = xSemaphoreCreateBinary();
+	assert_param(xSemaphoreTimer60s);
+	xSemaphoreTake(xSemaphoreTimer60s, 0);
+
+	xQueueSet = xQueueCreateSet(1 + 1);
+	assert_param(xQueueSet);
+
+	xQueueAddToSet(xSemaphoreTimer1s, xQueueSet);
+	xQueueAddToSet(xSemaphoreTimer60s, xQueueSet);
+
+
+	xTimer1s = xTimerCreate("Timer1s", 1 * 1000, pdTRUE, xSemaphoreTimer1s, TimerCallback);
+	assert_param(xTimer1s);
+
+	xTimer60s = xTimerCreate("Timer60s", 60 * 1000, pdTRUE, xSemaphoreTimer60s, TimerCallback);
+	assert_param(xTimer60s);
+
+	xQueueData = xQueueCreate(1, sizeof(ClimateStruct));
+	assert_param(xQueueData);
+
 	xTaskCreate(task_climate, "Climate", configTASK_CLIMATE_STACK, this, configTASK_CLIMATE_PRIORITY, &handle);
 }
 
@@ -44,49 +74,69 @@ Climate::Climate() {
 void Climate::task() {
 	_log("Start\n");
 
-char str[16];
-TickType_t timeout = xTaskGetTickCount();
-
 	m_pSA56->Init();
+
+	xTimerStart(xTimer1s, 1);
+	xTimerStart(xTimer60s, 1);
+
 	for (;;) {
-		m_pSA56->UpdateData();
-		float T = m_pSA56->GetTemperature(SA56004::Sensor_Internal);
-		FloatToString(str, T, 3, 3);
-		_log("Temperature Local: %s C\n", str);
+		QueueSetMemberHandle_t event = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+		if (event == xSemaphoreTimer1s) {
+			xSemaphoreTake(event, 0);
 
-		T = m_pSA56->GetTemperature(SA56004::Sensor_Remote);
-		FloatToString(str, T, 3, 3);
-		_log("Temperature Remote: %s C\n", str);
+			m_pSA56->UpdateData();
+			m_pSHT30->UpdateData();
 
-		m_pSHT30->UpdateData();
-//		_log("Update: %d\n", ret);
-		T = m_pSHT30->GetTemperature();
-		FloatToString(str, T, 3, 3);
-		_log("Temperature SHT30: %s C\n", str);
+			m_xClimateData.TemperatureLocal = m_pSA56->GetTemperature(SA56004::Sensor_Internal);
+			m_xClimateData.TemperatureExternal = m_pSA56->GetTemperature(SA56004::Sensor_Remote);
+			m_xClimateData.TemperatureLocalAlt = m_pSHT30->GetTemperature();
+			m_xClimateData.Humidity = m_pSHT30->GetHumidityRel();
 
-		vTaskDelayUntil(&timeout, 2000);
+			m_xClimateData.Cooler = (CLIMATE_COOLER_EN == 1);
+			m_xClimateData.Heater = (CLIMATE_HEATER_EN == 1);
+
+			xQueueOverwrite(xQueueData, &m_xClimateData);
+
+			PrintClimateData(m_xClimateData);
+
+		} else if (event == xSemaphoreTimer60s) {
+			xSemaphoreTake(event, 0);
+
+			if (m_bAutomaticMode)
+				ProcessAutomaticRegulation();
+
+			m_xClimateData.Cooler = (CLIMATE_COOLER_EN == 1);
+			m_xClimateData.Heater = (CLIMATE_HEATER_EN == 1);
+			xQueueOverwrite(xQueueData, &m_xClimateData);
+
+		} else {
+			_log("Error\n");
+		}
 	}
+}
 
-#if 0
-	for (;;) {
-		uint16_t status;
-		bool ret = m_pSHT30->ReadStatus(status);
-		_log("Status %d: 0x%04X\n", ret, status);
-		m_pSHT30->ClearStatus();
 
-		ret = m_pSHT30->UpdateData();
-		_log("Update: %d\n", ret);
+void Climate::ProcessAutomaticRegulation() {
 
-		float T = m_pSHT30->GetTemperature();
-		FloatToString(str, T, 3, 3);
-		_log("Temperature: %s C\n", str);
+}
 
-		float H = m_pSHT30->GetHumidityRel();
-		FloatToString(str, H, 3, 3);
-		_log("Humidity: %s%%\n\n", str);
-		vTaskDelayUntil(&timeout, 2000);
-	}
-#endif
+
+void Climate::PrintClimateData(const ClimateStruct &c) {
+char str[16];
+	FloatToString(str, c.TemperatureLocal, 3, 3);
+	_log("Temperature Local: %s C\n", str);
+
+	FloatToString(str, c.TemperatureExternal, 3, 3);
+	_log("Temperature Remote: %s C\n", str);
+
+	FloatToString(str, c.TemperatureLocalAlt, 3, 3);
+	_log("Temperature SHT30: %s C\n", str);
+
+	FloatToString(str, c.Humidity, 3, 3);
+	_log("Humidity: %s%%\n", str);
+
+	_log("Heater: %s\n", c.Heater ? "ON" : "OFF");
+	_log("Cooler: %s\n\n", c.Cooler ? "ON" : "OFF");
 }
 
 

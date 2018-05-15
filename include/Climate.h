@@ -18,11 +18,24 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
+#include <timers.h>
 #include <stm32f10x.h>
 #include "common.h"
 #include "I2CDriver.h"
 #include "SHT30.h"
 #include "SA56004.h"
+
+
+typedef struct ClimateStruct_ {
+	float TemperatureLocal;			// Температура локального датчика
+	float TemperatureExternal;		// Температура внешнего датчика
+	float TemperatureLocalAlt;		// Температура в датчике влажности
+	float Humidity;					// Влажность относительная
+
+	bool Heater;					// Состояние печки
+	bool Cooler;					// Состояние вентилятора
+} ClimateStruct;
+
 
 class Climate : public TaskBase {
 public:
@@ -37,6 +50,8 @@ public:
 			vTaskDelay(portMAX_DELAY);
 	}
 
+	QueueHandle_t xQueueData;
+
 private:
 	I2CDriver *m_pI2CDriver = NULL;
 	SHT30 *m_pSHT30 = NULL;
@@ -48,6 +63,19 @@ private:
 	Climate(Climate const &) = delete;
 	Climate& operator= (Climate const &) = delete;
 
+	TimerHandle_t xTimer60s;
+	SemaphoreHandle_t xSemaphoreTimer60s;
+
+	TimerHandle_t xTimer1s;
+	SemaphoreHandle_t xSemaphoreTimer1s;
+
+	QueueSetHandle_t xQueueSet;
+	ClimateStruct m_xClimateData;
+	void PrintClimateData(const ClimateStruct &c);
+
+
+	bool m_bAutomaticMode = false;
+	void ProcessAutomaticRegulation();
 };
 
 

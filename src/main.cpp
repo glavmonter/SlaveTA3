@@ -135,6 +135,16 @@ GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
+
+	CLIMATE_HEATER_EN = 0;
+	GPIO_InitStructure.GPIO_Pin = CLIMATE_HEATER_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(CLIMATE_HEATER_PORT, &GPIO_InitStructure);
+
+	CLIMATE_COOLER_EN = 0;
+	GPIO_InitStructure.GPIO_Pin = CLIMATE_COOLER_PIN;
+	GPIO_Init(CLIMATE_COOLER_PORT, &GPIO_InitStructure);
 }
 
 
