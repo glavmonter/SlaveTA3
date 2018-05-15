@@ -44,7 +44,11 @@ _Min_Stack_Size = 0x100; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 128K
+  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 126K
+  FLASH_vars_version (r) : ORIGIN = 0x0801F800, LENGTH = 4
+  FLASH_vars_key (r): ORIGIN = 0x0801F804, LENGTH = 12
+  
+  FLASH_lp (r)	    : ORIGIN = 0x0801FC00, LENGTH = 1K		/* Последний блок во FLASH памяти */
   RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 20K
   MEMORY_B1 (rx)  : ORIGIN = 0x60000000, LENGTH = 0K
 }
@@ -76,7 +80,20 @@ SECTIONS
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
   } >FLASH
-
+  
+  .flash_variables_sect : {
+  	*(.flash_variables_sect .flash_variables_sect.*)
+  } >FLASH_lp
+  
+  .vars_version_sect : {
+  	*(.vars_version_sect .vars_version_sect.*)
+  } >FLASH_vars_version
+  
+  .vars_key_sect : {
+  	*(.vars_key_sect .vars_key_sect.*)
+  } >FLASH_vars_key
+  
+  
   /* Constant data goes into FLASH */
   .rodata :
   {

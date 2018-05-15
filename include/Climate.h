@@ -27,13 +27,14 @@
 
 
 typedef struct ClimateStruct_ {
-	float TemperatureLocal;			// Температура локального датчика
-	float TemperatureExternal;		// Температура внешнего датчика
-	float TemperatureLocalAlt;		// Температура в датчике влажности
-	float Humidity;					// Влажность относительная
+	float TemperatureLocal;			/// Температура локального датчика
+	float TemperatureExternal;		/// Температура внешнего датчика
+	float TemperatureLocalAlt;		/// Температура в датчике влажности
+	float Humidity;					/// Влажность относительная
 
-	bool Heater;					// Состояние печки
-	bool Cooler;					// Состояние вентилятора
+	bool Heater;					/// Состояние печки
+	bool Cooler;					/// Состояние вентилятора
+	bool AutomaticMode;				/// Режим работы (автоматический или ручной)
 } ClimateStruct;
 
 
@@ -51,6 +52,8 @@ public:
 	}
 
 	QueueHandle_t xQueueData;
+
+	void PrintClimateData(const ClimateStruct &c);
 
 private:
 	I2CDriver *m_pI2CDriver = NULL;
@@ -71,8 +74,6 @@ private:
 
 	QueueSetHandle_t xQueueSet;
 	ClimateStruct m_xClimateData;
-	void PrintClimateData(const ClimateStruct &c);
-
 
 	bool m_bAutomaticMode = false;
 	void ProcessAutomaticRegulation();

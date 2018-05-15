@@ -59,7 +59,7 @@ portTASK_FUNCTION_PROTO(vTestTask2, pvParameters);
 /* Private functions */
 
 #if configGENERATE_RUN_TIME_STATS == 1
-#error Configure timers first!!!
+//#error Configure timers first!!!
 
 static void setupRunTimeStats();
 portTASK_FUNCTION_PROTO(vStatTask, pvParameters);
@@ -104,9 +104,18 @@ int main(void) {
 
 	prvHardwareSetup();
 
-TaskHandle_t handle = NULL;
+	if ((BKP_ReadBackupRegister(BKP_DR1) == 0x1234) and
+		(BKP_ReadBackupRegister(BKP_DR5) == 0xCE94)) {
+
+		BKP_WriteBackupRegister(BKP_DR1, 0x0000);
+		BKP_WriteBackupRegister(BKP_DR5, 0x0000);
+
+		/* Start Bootloader */
+		StartExternalApp(0x1FFFF000);
+	}
 
 #if configGENERATE_RUN_TIME_STATS == 1
+TaskHandle_t handle = NULL;
 	setupRunTimeStats();
 	xTaskCreate(vStatTask, "Stat", configMINIMAL_STACK_SIZE*3, NULL, tskIDLE_PRIORITY, &handle);
 	assert_param(handle);
@@ -121,6 +130,11 @@ static void prvHardwareSetup() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC |
 						   RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOE | RCC_APB2Periph_AFIO, ENABLE);
 
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR, ENABLE);
+	PWR_BackupAccessCmd(ENABLE);
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
 /*  */
 GPIO_InitTypeDef GPIO_InitStructure;
 	PORTA_DATA4_OUT = PORTA_DATA5_OUT = PORTA_DATA6_OUT = PORTA_DATA7_OUT = 1;
@@ -134,6 +148,14 @@ GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Pin = PORTB_DATA_OUT_PINS;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PORTA_DATA_IN_PINS;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_Init(PORTA_DATA_PORT, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = PORTB_DATA_IN_PINS;
 	GPIO_Init(PORTB_DATA_PORT, &GPIO_InitStructure);
 
 	CLIMATE_HEATER_EN = 0;
@@ -182,16 +204,16 @@ static void setupRunTimeStats() {
 TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 NVIC_InitTypeDef NVIC_InitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 	TIM_TimeBaseStructure.TIM_Period = (uint16_t)(SystemCoreClock/20000) - 1;
 	TIM_TimeBaseStructure.TIM_Prescaler = 0;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
-	TIM_ITConfig(TIM7, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 
 	NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;
@@ -199,12 +221,12 @@ NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	TIM_Cmd(TIM7, ENABLE);
+	TIM_Cmd(TIM4, ENABLE);
 }
 
-void TIM7_IRQHandler() {
-	if (TIM_GetITStatus(TIM7, TIM_IT_Update)) {
-		TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
+void TIM4_IRQHandler() {
+	if (TIM_GetITStatus(TIM4, TIM_IT_Update)) {
+		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 		ulRunTimeStatsClock++;
 	}
 }
@@ -215,6 +237,8 @@ portTASK_FUNCTION(vStatTask, pvParameters) {
 (void)pvParameters;
 	for (;;) {
 		vTaskDelay(10000);
+		_log("FreeHeap: %d\n", xPortGetFreeHeapSize());
+
 		portENTER_CRITICAL();
 			vTaskGetRunTimeStats(buffer);
 			SEGGER_RTT_printf(0, "\n===============RUN TIME====================\n");

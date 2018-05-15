@@ -9,7 +9,7 @@
   * @attention
   * Всем очко!!
   *
-  * <h2><center>&copy; 2016 ФГУП "18 ЦНИИ" МО РФ</center></h2>
+  * <h2><center>&copy; 2018 ООО "РПС"</center></h2>
   ******************************************************************************
   */
 
@@ -19,8 +19,14 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
+#include <queue.h>
+#include <timers.h>
 #include "common.h"
+#include "Wake.h"
+#include "Wiegand.h"
 
+
+uint32_t StartExternalApp(uint32_t address);
 
 /**
  * @class MainTask
@@ -42,12 +48,54 @@ public:
 	}
 
 private:
+	Wiegand *m_pWiegandCh1;
+	Wiegand *m_pWiegandCh2;
+
+public:
+	USART_TypeDef *m_pUSART = SERIAL_USB_USART;
+	QueueHandle_t xQueueUsartRx;
+
+private:
 	MainTask();
 	~MainTask() {}
 
 	MainTask(MainTask const &) = delete;
 	MainTask& operator= (MainTask const &) = delete;
+
+
+	void InitHardware();
+	void Init();
+
+	// RTOS Objects
+	QueueSetHandle_t xQueueSet;
+	TimerHandle_t xTimer;
+	SemaphoreHandle_t xTimerSemaphore;
+	QueueHandle_t xQueueWiegand;
+
+	// External Classes
+	Wake *m_pWake;
+
+
+	/* Process commands */
+	void ProcessCmdInfo();
+	void ProcessBoot();
+	void ProcessWiegand(Command cmd, const WiegandStruct &wig);
+	void ProcessPORTs(Command cmd);
+
+	void ProcessClimate(Command cmd);
 };
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void USART1_IRQHandler();
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif /* MAINTASK_H_ */

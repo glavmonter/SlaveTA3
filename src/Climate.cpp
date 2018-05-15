@@ -34,6 +34,14 @@ SemaphoreHandle_t sem = static_cast<SemaphoreHandle_t>(pvTimerGetTimerID(xTimer)
 
 
 Climate::Climate() {
+	m_xClimateData.TemperatureLocal = 24.0f;
+	m_xClimateData.TemperatureLocalAlt = 24.0f;
+	m_xClimateData.TemperatureExternal = 24.0f;
+	m_xClimateData.Humidity = 24.0f;
+	m_xClimateData.Cooler = false;
+	m_xClimateData.Heater = false;
+	m_xClimateData.AutomaticMode = false;
+
 	m_pI2CDriver = new I2CDriver(I2C2);
 	assert_param(m_pI2CDriver);
 
@@ -66,13 +74,13 @@ Climate::Climate() {
 
 	xQueueData = xQueueCreate(1, sizeof(ClimateStruct));
 	assert_param(xQueueData);
+	xQueueOverwrite(xQueueData, &m_xClimateData);
 
 	xTaskCreate(task_climate, "Climate", configTASK_CLIMATE_STACK, this, configTASK_CLIMATE_PRIORITY, &handle);
 }
 
 
 void Climate::task() {
-	_log("Start\n");
 
 	m_pSA56->Init();
 
@@ -94,10 +102,9 @@ void Climate::task() {
 
 			m_xClimateData.Cooler = (CLIMATE_COOLER_EN == 1);
 			m_xClimateData.Heater = (CLIMATE_HEATER_EN == 1);
+			m_xClimateData.AutomaticMode = m_bAutomaticMode;
 
 			xQueueOverwrite(xQueueData, &m_xClimateData);
-
-			PrintClimateData(m_xClimateData);
 
 		} else if (event == xSemaphoreTimer60s) {
 			xSemaphoreTake(event, 0);
@@ -107,10 +114,12 @@ void Climate::task() {
 
 			m_xClimateData.Cooler = (CLIMATE_COOLER_EN == 1);
 			m_xClimateData.Heater = (CLIMATE_HEATER_EN == 1);
+			m_xClimateData.AutomaticMode = m_bAutomaticMode;
+
 			xQueueOverwrite(xQueueData, &m_xClimateData);
 
 		} else {
-			_log("Error\n");
+			__NOP();
 		}
 	}
 }

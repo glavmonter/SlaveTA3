@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 #if configGENERATE_RUN_TIME_STATS == 1
-	void TIM7_IRQHandler();
+	void TIM4_IRQHandler();
 #endif
 
 
