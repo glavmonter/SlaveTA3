@@ -40,11 +40,12 @@ typedef enum Command_ {
 
 	CMD_POWERS_IDR					= 0x11, /// Считать значение статуса
 	CMD_POWERS_ODRR					= 0x12,	/// Считывание значения управляемых нагрузок
-	CMD_POWERS_ORRW					= 0x13, /// Записать значение управляемых нагрузок
+	CMD_POWERS_ODRW					= 0x13, /// Записать значение управляемых нагрузок
 	CMD_POWERS_SET					= 0x14, /// Включить нагрузки
 	CMD_POWERS_RESET				= 0x15,	/// Отключить нагрузки
 
 	CMD_CLIMATE_GET					= 0x16, /// Информация о климатике
+	CMD_CLIMATE_SET					= 0x17, /// Выбор режима, включение
 
 	CMD_RS485_INFO					= 0x20, /// RS485 Информация
 } Command;

@@ -45,11 +45,13 @@ bool ret = m_pDriver->write(m_iAddress, cmd, 2, false);
 
 bool SHT30::UpdateData() {
 uint8_t cmd[2] = {0x24, 0x0B};
-	m_pDriver->write(m_iAddress, cmd, 2, false);
+bool ret = true;
+
+	ret &= m_pDriver->write(m_iAddress, cmd, 2, false);
 	vTaskDelay(35);	// Conversion time
 
 uint8_t responce[6];
-	m_pDriver->read(m_iAddress, responce, 6, false);
+	ret &= m_pDriver->read(m_iAddress, responce, 6, false);
 
 bool crc;
 	crc = CRC8(responce[0], responce[1], responce[2]) and
@@ -61,9 +63,9 @@ bool crc;
 	uint16_t TempatureRaw = (responce[0] << 8) | responce[1];
 	uint16_t HumidityRaw = (responce[3] << 8) | responce[4];
 
-	m_fTemperature = ((float)TempatureRaw) * 0.00267033f - 45.0f;
+	m_fTemperature = ((float)TempatureRaw) * 0.00267033f - 45.0f + 273.15f;
 	m_fHumidity = ((float)HumidityRaw) * 0.0015259f;
-	return true;
+	return ret;
 }
 
 

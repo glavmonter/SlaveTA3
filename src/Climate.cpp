@@ -87,13 +87,36 @@ void Climate::task() {
 	xTimerStart(xTimer1s, 1);
 	xTimerStart(xTimer60s, 1);
 
+ClimateStruct lc;
+
 	for (;;) {
 		QueueSetMemberHandle_t event = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
 		if (event == xSemaphoreTimer1s) {
 			xSemaphoreTake(event, 0);
+			xQueuePeek(xQueueData, &lc, 0);
+			if (lc.AutomaticMode != m_bAutomaticMode) {
+				m_bAutomaticMode = lc.AutomaticMode;
+				_log("Automatic Mode changed to %s\n", m_bAutomaticMode ? "True" : "False");
+				if (m_bAutomaticMode == true) {
+					CLIMATE_HEATER_EN = 0;
+					CLIMATE_COOLER_EN = 0;
+				}
+			}
 
-			m_pSA56->UpdateData();
-			m_pSHT30->UpdateData();
+			if (m_bAutomaticMode == false) {
+				CLIMATE_COOLER_EN = lc.Cooler ? 1 : 0;
+				CLIMATE_HEATER_EN = lc.Heater ? 1 : 0;
+			}
+
+			if (m_pSA56->UpdateData() == false) {
+				_log("SA56 Err\n");
+				_log("SA56 reset hardware: %s\n", m_pI2CDriver->ResetHardware() ? "OK" : "Err");
+			}
+
+			if (m_pSHT30->UpdateData() == false) {
+				_log("SHT Err\n");
+				_log("SHT Reset hardware: %s\n", m_pI2CDriver->ResetHardware() ? "OK" : "Err");
+			}
 
 			m_xClimateData.TemperatureLocal = m_pSA56->GetTemperature(SA56004::Sensor_Internal);
 			m_xClimateData.TemperatureExternal = m_pSA56->GetTemperature(SA56004::Sensor_Remote);
@@ -102,8 +125,8 @@ void Climate::task() {
 
 			m_xClimateData.Cooler = (CLIMATE_COOLER_EN == 1);
 			m_xClimateData.Heater = (CLIMATE_HEATER_EN == 1);
-			m_xClimateData.AutomaticMode = m_bAutomaticMode;
 
+			m_xClimateData.AutomaticMode = m_bAutomaticMode;
 			xQueueOverwrite(xQueueData, &m_xClimateData);
 
 		} else if (event == xSemaphoreTimer60s) {
@@ -126,19 +149,19 @@ void Climate::task() {
 
 
 void Climate::ProcessAutomaticRegulation() {
-
+	_log("%s\n", __FUNCTION__);
 }
 
 
 void Climate::PrintClimateData(const ClimateStruct &c) {
 char str[16];
-	FloatToString(str, c.TemperatureLocal, 3, 3);
+	FloatToString(str, c.TemperatureLocal - 273.15f, 3, 3);
 	_log("Temperature Local: %s C\n", str);
 
-	FloatToString(str, c.TemperatureExternal, 3, 3);
+	FloatToString(str, c.TemperatureExternal - 273.15f, 3, 3);
 	_log("Temperature Remote: %s C\n", str);
 
-	FloatToString(str, c.TemperatureLocalAlt, 3, 3);
+	FloatToString(str, c.TemperatureLocalAlt - 273.15f, 3, 3);
 	_log("Temperature SHT30: %s C\n", str);
 
 	FloatToString(str, c.Humidity, 3, 3);

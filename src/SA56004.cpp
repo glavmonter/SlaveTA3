@@ -48,27 +48,27 @@ float SA56004::GetTemperature(SA56004::SensorType type) {
 
 
 bool SA56004::UpdateData() {
-bool ret = false;
+bool ret = true;
 uint8_t cmd[] = {0x00};
 uint8_t temp_h, temp_l;
 
-	ret = m_pDriver->write(m_iAddress, cmd, 1, false);
-	ret = m_pDriver->read(m_iAddress, &temp_h, 1, false);
+	ret &= m_pDriver->write(m_iAddress, cmd, 1, false);
+	ret &= m_pDriver->read(m_iAddress, &temp_h, 1, false);
 	cmd[0] = 0x22;
-	ret = m_pDriver->write(m_iAddress, cmd, 1, false);
-	ret = m_pDriver->read(m_iAddress, &temp_l, 1, false);
+	ret &= m_pDriver->write(m_iAddress, cmd, 1, false);
+	ret &= m_pDriver->read(m_iAddress, &temp_l, 1, false);
 
 int16_t local = (temp_h << 8) | temp_l;
-	m_fTemperatureLocal = local * 0.125f / 32.0f;
+	m_fTemperatureLocal = local * 0.125f / 32.0f + 273.15f;
 
 	cmd[0] = 0x01;
-	ret = m_pDriver->write(m_iAddress, cmd, 1, false);
-	ret = m_pDriver->read(m_iAddress, &temp_h, 1, false);
+	ret &= m_pDriver->write(m_iAddress, cmd, 1, false);
+	ret &= m_pDriver->read(m_iAddress, &temp_h, 1, false);
 	cmd[0] = 0x10;
-	ret = m_pDriver->write(m_iAddress, cmd, 1, false);
-	ret= m_pDriver->read(m_iAddress, &temp_l, 1, false);
+	ret &= m_pDriver->write(m_iAddress, cmd, 1, false);
+	ret &= m_pDriver->read(m_iAddress, &temp_l, 1, false);
 int16_t remote = (temp_h << 8) | temp_l;
-	m_fTemperatureRemote = remote * 0.125f / 32.0f;
+	m_fTemperatureRemote = remote * 0.125f / 32.0f + 273.15f;
  	return ret;
 }
 

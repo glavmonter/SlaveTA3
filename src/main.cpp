@@ -88,24 +88,12 @@ int main(void) {
 	SEGGER_RTT_ConfigUpBuffer(0, NULL, NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 	SEGGER_RTT_printf(0, "Hello\n");
 
-	/*
-	uint32_t stack = 0;
-	stack = *(__IO uint32_t *)APPLICATION_ADDRESS;
-
-	if (stack == 0x200001fc) {
-		JumpAddress = *(__IO uint32_t *)(APPLICATION_ADDRESS + 4);
-		Jump_To_Application = (pFunction)JumpAddress;
-		__set_MSP(*(__IO uint32_t *)APPLICATION_ADDRESS);
-		Jump_To_Application();
-	} else {
-		while (1){}
-	}
-*/
-
 	prvHardwareSetup();
 
 	if ((BKP_ReadBackupRegister(BKP_DR1) == 0x1234) and
 		(BKP_ReadBackupRegister(BKP_DR5) == 0xCE94)) {
+
+		SEGGER_RTT_printf(0, "Boot\n");
 
 		BKP_WriteBackupRegister(BKP_DR1, 0x0000);
 		BKP_WriteBackupRegister(BKP_DR5, 0x0000);

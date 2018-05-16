@@ -52,7 +52,6 @@ public:
 	}
 
 	QueueHandle_t xQueueData;
-
 	void PrintClimateData(const ClimateStruct &c);
 
 private:

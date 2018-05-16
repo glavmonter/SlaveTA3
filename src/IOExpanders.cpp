@@ -151,7 +151,7 @@ uint16_t resp = false;
 				xQueueOverwrite(xQueueResponce, &resp);
 				break;
 
-			case CMD_POWERS_ORRW:
+			case CMD_POWERS_ODRW:
 				resp = PowerWrite((cmd.data[0] << 8) | cmd.data[1]);
 				xQueueOverwrite(xQueueResponce, &resp);
 				break;

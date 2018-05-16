@@ -179,7 +179,7 @@ uint16_t ioe_responce;
 					}
 					break;
 
-				case CMD_POWERS_ORRW:
+				case CMD_POWERS_ODRW:
 				case CMD_POWERS_RESET:
 				case CMD_POWERS_SET:
 					ioe_cmd.cmd = cmd;
@@ -196,6 +196,7 @@ uint16_t ioe_responce;
 					break;
 
 				case CMD_CLIMATE_GET:
+				case CMD_CLIMATE_SET:
 					ProcessClimate(m_pWake->GetCommand());
 					break;
 
@@ -343,6 +344,22 @@ uint8_t len = 0;
 
 		assert_param(len < FRAME_SIZE);
 		m_pWake->ProcessTx(0x01, CMD_CLIMATE_GET, len);
+		return;
+
+	} else if (cmd == CMD_CLIMATE_SET) {
+		bool heater = m_pWake->RxData[0] & 0x01;
+		bool cooler = m_pWake->RxData[0] & 0x02;
+		bool automatic = m_pWake->RxData[0] & 0x04;
+		_log("Automatic set to %s\n", automatic ? "True" : "False");
+		_log("Heater set to %s\n", heater ? "True" : "False");
+		_log("Cooler set to %s\n", cooler ? "True" : "False");
+
+		climate.AutomaticMode = automatic;
+		climate.Cooler = cooler;
+		climate.Heater = heater;
+		xQueueOverwrite(Climate::Instance().xQueueData, &climate);
+
+		m_pWake->ProcessTx(0x01, CMD_CLIMATE_SET, 0);
 		return;
 	}
 

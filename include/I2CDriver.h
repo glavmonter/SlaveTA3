@@ -30,11 +30,14 @@ public:
 	I2CDriver(I2C_TypeDef *i2c);
 	I2C_TypeDef *m_pI2C;
 
-	uint8_t write(uint8_t address, const uint8_t *pData, uint8_t lenght, bool repeated = false);
-	uint8_t read(uint8_t address, uint8_t *pData, uint8_t lenght, bool repeated = false);
+	bool write(uint8_t address, const uint8_t *pData, uint8_t lenght, bool repeated = false);
+	bool read(uint8_t address, uint8_t *pData, uint8_t lenght, bool repeated = false);
+
+	bool ResetHardware();
+	void InitHardware();
 
 protected:
-	void InitHardware();
+
 };
 
 

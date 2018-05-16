@@ -1,4 +1,10 @@
-import crcmod
+try:
+    import crcmod
+except ModuleNotFoundError as err:
+    print('Import module crcmod error: {}'.format(str(err)))
+    print('Install module crcmod')
+    exit(-1)
+
 from struct import pack
 
 FEND = b'\xC0'
