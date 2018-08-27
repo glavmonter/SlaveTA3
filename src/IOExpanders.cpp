@@ -59,17 +59,21 @@ IOExpanders::IOExpanders() {
 
 	xSemaphoreDiscretIrq = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreDiscretIrq);
+	vTraceSetSemaphoreName(xSemaphoreDiscretIrq, "DiscretIRQ");
 	xSemaphoreTake(xSemaphoreDiscretIrq, 0);
 
 	xSemaphoreTimer = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimer);
+	vTraceSetSemaphoreName(xSemaphoreTimer, "DiscretTimer");
 	xSemaphoreTake(xSemaphoreTimer, 0);
 
 	xQueueCommands = xQueueCreate(5, sizeof(IOECommand));
 	assert_param(xQueueCommands);
+	vTraceSetQueueName(xQueueCommands, "DiscretCommands");
 
 	xQueueSet = xQueueCreateSet(1 + 5 + 2);
 	assert_param(xQueueSet);
+	vTraceSetQueueName(xQueueSet, "QueueSet");
 
 	xQueueAddToSet(xSemaphoreDiscretIrq, xQueueSet);
 	xQueueAddToSet(xSemaphoreTimer, xQueueSet);
@@ -77,11 +81,13 @@ IOExpanders::IOExpanders() {
 
 	xQueueResponce = xQueueCreate(1, sizeof(uint16_t));
 	assert_param(xQueueResponce);
+	vTraceSetQueueName(xQueueResponce, "DiscretResponce");
 
 	xTimer = xTimerCreate("IOE", 5, pdTRUE, xSemaphoreTimer, TimerCallback);
 	assert_param(xTimer);
 
 	xTaskCreate(task_expanders, "IOExp", configMINIMAL_STACK_SIZE*2, this, configTASK_IOE_PRIORITY, &handle);
+	assert_param(handle);
 }
 
 

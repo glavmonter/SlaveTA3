@@ -35,10 +35,12 @@ Wiegand::Wiegand(WiegandChannel channel, QueueHandle_t result_queue) :
 
 	if (channel == WiegandChannel::Channel_1) {
 		xTaskCreate(task_wiegand, "Wieg_1", configTASK_WIEGAND_STACK, this, configTASK_WIEGAND_PRIORITY, &handle);
+		assert_param(handle);
 		wiegand_ch1 = this;
 	}
 	else if (channel == WiegandChannel::Channel_2) {
 		xTaskCreate(task_wiegand, "Wieg_2", configTASK_WIEGAND_STACK, this, configTASK_WIEGAND_PRIORITY, &handle);
+		assert_param(handle);
 		wiegand_ch2 = this;
 	}
 	else {
@@ -48,10 +50,13 @@ Wiegand::Wiegand(WiegandChannel channel, QueueHandle_t result_queue) :
 
 	xSemaphoreIRQ = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreIRQ);
+	vTraceSetSemaphoreName(xSemaphoreIRQ, channel == WiegandChannel::Channel_1 ? "sWiegIRQ1" : "sWiegIRQ2");
 	xSemaphoreTake(xSemaphoreIRQ, 0);
 
 	xSemaphoreTimerTimeout = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimerTimeout);
+	vTraceSetSemaphoreName(xSemaphoreTimerTimeout,
+			channel == WiegandChannel::Channel_1 ? "sWiegTO1" : "sWiegTO2");
 	xSemaphoreTake(xSemaphoreTimerTimeout, 0);
 
 	xTimer = xTimerCreate("TimerWieg", 20, pdFALSE, xSemaphoreTimerTimeout, vTimerCallback);
@@ -59,6 +64,7 @@ Wiegand::Wiegand(WiegandChannel channel, QueueHandle_t result_queue) :
 
 	xQueueSet = xQueueCreateSet(1 + 1);
 	assert_param(xQueueSet);
+	vTraceSetQueueName(xQueueSet, channel == WiegandChannel::Channel_1 ? "qsWieg1" : "qsWieg2");
 
 	xQueueAddToSet(xSemaphoreIRQ, xQueueSet);
 	xQueueAddToSet(xSemaphoreTimerTimeout, xQueueSet);

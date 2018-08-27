@@ -69,6 +69,7 @@ uint32_t StartExternalApp(uint32_t address) {
 MainTask::MainTask() {
 	SEGGER_RTT_printf(0, "Free: %d\n", xPortGetFreeHeapSize());
 	xTaskCreate(task_main, "Main", configTASK_MAIN_STACK, this, configTASK_MAIN_PRIORITY, &handle);
+	assert_param(handle);
 }
 
 /**
@@ -449,6 +450,7 @@ void MainTask::Init() {
 
 		xTimerSemaphore = xSemaphoreCreateBinary();
 		assert_param(xTimerSemaphore);
+		vTraceSetSemaphoreName(xTimerSemaphore, "sTimer");
 		xSemaphoreTake(xTimerSemaphore, 0);
 
 		xTimer = xTimerCreate("Main", 1000, pdTRUE, xTimerSemaphore, TimerCallback);
@@ -456,9 +458,11 @@ void MainTask::Init() {
 
 		xQueueUsartRx = xQueueCreate(20, sizeof(uint8_t));
 		assert_param(xQueueUsartRx);
+		vTraceSetQueueName(xQueueUsartRx, "qUsartRx");
 
 		xQueueWiegand = xQueueCreate(2, sizeof(WiegandStruct));
 		assert_param(xQueueWiegand);
+		vTraceSetQueueName(xQueueWiegand, "qWiegData");
 
 		xQueueSet = xQueueCreateSet(1 + 20 + 0);
 		assert_param(xQueueSet);
@@ -505,7 +509,7 @@ USART_InitTypeDef USART_InitStructure;
 	NVIC_Init(&NVIC_InitStructure);
 
 
-	USART_InitStructure.USART_BaudRate = 115200;
+	USART_InitStructure.USART_BaudRate = 256000;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_2;
 	USART_InitStructure.USART_Parity = USART_Parity_No;

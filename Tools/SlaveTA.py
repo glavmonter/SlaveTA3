@@ -11,6 +11,7 @@ except ModuleNotFoundError as err:
 import Wake
 from enum import Enum
 
+BAUDRATE = 256000
 
 class Commands(Enum):
     ERR = 0x01
@@ -48,7 +49,7 @@ def _humane_bytes(b):
 def get_info(port, address):
     try:
         request = Wake.wake_transmit(Commands.INFO, b'', address)
-        ser = serial.Serial(port=port, baudrate=115200, timeout=0.1)
+        ser = serial.Serial(port=port, baudrate=BAUDRATE, timeout=0.1)
         ser.write(request)
         ret = Wake.wake_decode(ser.read(64))
         print('Request:  ', _humane_bytes(request))
@@ -76,7 +77,7 @@ def get_info(port, address):
 def get_wiegand(port, address):
     err_ret = False, 0, 0, b''
     try:
-        ser = serial.Serial(port=port, baudrate=115200, timeout=0.1)
+        ser = serial.Serial(port=port, baudrate=BAUDRATE, timeout=0.1)
         request = Wake.wake_transmit(Commands.WIEGAND, b'', address)
         ser.write(request)
         ret = Wake.wake_decode(ser.read(64))
@@ -116,7 +117,7 @@ def change_to_boot(port, address):
     print('Out: {}'.format(_humane_bytes(cipher)))
 
     try:
-        ser = serial.Serial(port=port, baudrate=115200, timeout=0.1)
+        ser = serial.Serial(port=port, baudrate=BAUDRATE, timeout=0.1)
         ser.write(Wake.wake_transmit(cmd=Commands.BOOT, data=cipher, adr=0x02))
         ret = Wake.wake_decode(ser.read(64))
         ser.close()
@@ -141,7 +142,7 @@ class Ports:
 
     def read_idr(self):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.PORTS_IDR, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -166,7 +167,7 @@ class Ports:
 
     def read_odr(self):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.PORTS_ODRR, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -191,7 +192,7 @@ class Ports:
 
     def write_data(self, data_a, data_b):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.PORTS_ODRW, data=bytes([data_a, data_b]), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -212,7 +213,7 @@ class Ports:
 
     def write_zeros(self, data_a, data_b):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.PORTS_RESET, data=bytes([data_a, data_b]), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -233,7 +234,7 @@ class Ports:
 
     def write_ones(self, data_a, data_b):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.PORTS_SET, data=bytes([data_a, data_b]), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -260,7 +261,7 @@ class Powers:
 
     def read_idr(self):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.POWERS_IDR, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -285,7 +286,7 @@ class Powers:
 
     def read_odr(self):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.POWERS_ODRR, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -310,7 +311,7 @@ class Powers:
 
     def write_data(self, data):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.POWERS_ODRW, data=struct.pack('>H', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -331,7 +332,7 @@ class Powers:
 
     def write_zeros(self, data):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.POWERS_RESET, data=struct.pack('>H', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -352,7 +353,7 @@ class Powers:
 
     def write_ones(self, data):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.POWERS_SET, data=struct.pack('>H', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -379,7 +380,7 @@ class Relays:
 
     def read_idr(self):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.RELAYS_IDR, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -404,7 +405,7 @@ class Relays:
 
     def read_odr(self):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.RELAYS_ODDR, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -429,7 +430,7 @@ class Relays:
 
     def write_data(self, data):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.RELAYS_ODRW, data=struct.pack('>H', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -450,7 +451,7 @@ class Relays:
 
     def write_zeros(self, data):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.RELAYS_RESET, data=struct.pack('>H', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -471,7 +472,7 @@ class Relays:
 
     def write_ones(self, data):
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.RELAYS_SET, data=struct.pack('>H', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -500,7 +501,7 @@ class Climate:
         err_ret = False, 0.0, 0.0, 0.0, 0.0, False, False, False
 
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.CLIMATE_GET, data=b'', adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))
@@ -531,7 +532,7 @@ class Climate:
 
         data = (auto << 2) | (cooler << 1) | (heater << 0)
         try:
-            ser = serial.Serial(port=self._port, baudrate=115200, timeout=0.1)
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
             request = Wake.wake_transmit(cmd=Commands.CLIMATE_SET, data=struct.pack('b', data), adr=self._address)
             ser.write(request)
             ret = Wake.wake_decode(ser.read(64))

@@ -16,12 +16,13 @@
 * All rights reserved.                                               *
 *                                                                    *
 * * This software may in its unmodified form be freely redistributed *
-*   in source form.                                                  *
+*   in source, linkable, or executable form.                         *
 * * The source code may be modified, provided the source code        *
 *   retains the above copyright notice, this list of conditions and  *
 *   the following disclaimer.                                        *
-* * Modified versions of this software in source or linkable form    *
-*   may not be distributed without prior consent of SEGGER.          *
+* * Modified versions of this software in source, executable, or     *
+*   linkable form may not be distributed without prior consent of    *
+*   SEGGER.                                                          *
 * * This software may only be used for communication with SEGGER     *
 *   J-Link debug probes.                                             *
 *                                                                    *
@@ -41,7 +42,7 @@
 *                                                                    *
 **********************************************************************
 *                                                                    *
-*       RTT version: 5.12g                                           *
+*       RTT version: 6.00e                                           *
 *                                                                    *
 **********************************************************************
 ---------------------------END-OF-HEADER------------------------------
@@ -49,6 +50,7 @@ File    : SEGGER_RTT.h
 Purpose : Implementation of SEGGER real-time transfer which allows
           real-time communication on targets which support debugger 
           memory accesses while the CPU is running.
+Revision: $Rev: 4079 $
 ----------------------------------------------------------------------
 */
 
@@ -127,23 +129,25 @@ extern SEGGER_RTT_CB _SEGGER_RTT;
 #ifdef __cplusplus
   extern "C" {
 #endif
-int          SEGGER_RTT_AllocDownBuffer  (const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
-int          SEGGER_RTT_AllocUpBuffer    (const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
-
-int          SEGGER_RTT_ConfigDownBuffer (unsigned BufferIndex, const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
-int          SEGGER_RTT_GetKey           (void);
-unsigned     SEGGER_RTT_HasData          (unsigned BufferIndex);
-int          SEGGER_RTT_HasKey           (void);
-void         SEGGER_RTT_Init             (void);
-unsigned     SEGGER_RTT_Read             (unsigned BufferIndex,       void* pBuffer, unsigned BufferSize);
-unsigned     SEGGER_RTT_ReadNoLock       (unsigned BufferIndex,       void* pData,   unsigned BufferSize);
-int          SEGGER_RTT_SetNameDownBuffer(unsigned BufferIndex, const char* sName);
-int          SEGGER_RTT_SetNameUpBuffer  (unsigned BufferIndex, const char* sName);
-int          SEGGER_RTT_WaitKey          (void);
-unsigned     SEGGER_RTT_Write            (unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
-unsigned     SEGGER_RTT_WriteNoLock      (unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
-unsigned     SEGGER_RTT_WriteSkipNoLock  (unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
-unsigned     SEGGER_RTT_WriteString      (unsigned BufferIndex, const char* s);
+int          SEGGER_RTT_AllocDownBuffer         (const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
+int          SEGGER_RTT_AllocUpBuffer           (const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
+int          SEGGER_RTT_ConfigUpBuffer          (unsigned BufferIndex, const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
+int          SEGGER_RTT_ConfigDownBuffer        (unsigned BufferIndex, const char* sName, void* pBuffer, unsigned BufferSize, unsigned Flags);
+int          SEGGER_RTT_GetKey                  (void);
+unsigned     SEGGER_RTT_HasData                 (unsigned BufferIndex);
+int          SEGGER_RTT_HasKey                  (void);
+void         SEGGER_RTT_Init                    (void);
+unsigned     SEGGER_RTT_Read                    (unsigned BufferIndex,       void* pBuffer, unsigned BufferSize);
+unsigned     SEGGER_RTT_ReadNoLock              (unsigned BufferIndex,       void* pData,   unsigned BufferSize);
+int          SEGGER_RTT_SetNameDownBuffer       (unsigned BufferIndex, const char* sName);
+int          SEGGER_RTT_SetNameUpBuffer         (unsigned BufferIndex, const char* sName);
+int          SEGGER_RTT_SetFlagsDownBuffer      (unsigned BufferIndex, unsigned Flags);
+int          SEGGER_RTT_SetFlagsUpBuffer        (unsigned BufferIndex, unsigned Flags);
+int          SEGGER_RTT_WaitKey                 (void);
+unsigned     SEGGER_RTT_Write                   (unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
+unsigned     SEGGER_RTT_WriteNoLock             (unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
+unsigned     SEGGER_RTT_WriteSkipNoLock         (unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
+unsigned     SEGGER_RTT_WriteString             (unsigned BufferIndex, const char* s);
 void         SEGGER_RTT_WriteWithOverwriteNoLock(unsigned BufferIndex, const void* pBuffer, unsigned NumBytes);
 //
 // Function macro for performance optimization
@@ -197,6 +201,7 @@ inline void __attribute__((always_inline)) _log(const char *str __attribute__((u
 #endif
 
 
+//int SEGGER_RTT_printf(unsigned BufferIndex, const char * sFormat, ...);
 #ifdef __cplusplus
   }
 #endif

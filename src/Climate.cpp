@@ -22,7 +22,7 @@
 #include <task.h>
 #include <semphr.h>
 #include <queue.h>
-#include <SEGGER_RTT.h>
+//#include <SEGGER_RTT.h>
 #include "hardware.h"
 #include "Climate.h"
 
@@ -53,14 +53,17 @@ Climate::Climate() {
 
 	xSemaphoreTimer1s = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimer1s);
+	vTraceSetSemaphoreName(xSemaphoreTimer1s, "Climate_1s");
 	xSemaphoreTake(xSemaphoreTimer1s, 0);
 
 	xSemaphoreTimer60s = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimer60s);
+	vTraceSetSemaphoreName(xSemaphoreTimer60s, "Climate_60s");
 	xSemaphoreTake(xSemaphoreTimer60s, 0);
 
 	xQueueSet = xQueueCreateSet(1 + 1);
 	assert_param(xQueueSet);
+	vTraceSetQueueName(xQueueSet, "ClimateQueueSet");
 
 	xQueueAddToSet(xSemaphoreTimer1s, xQueueSet);
 	xQueueAddToSet(xSemaphoreTimer60s, xQueueSet);
@@ -74,9 +77,11 @@ Climate::Climate() {
 
 	xQueueData = xQueueCreate(1, sizeof(ClimateStruct));
 	assert_param(xQueueData);
+	vTraceSetQueueName(xQueueData, "ClimateData");
 	xQueueOverwrite(xQueueData, &m_xClimateData);
 
 	xTaskCreate(task_climate, "Climate", configTASK_CLIMATE_STACK, this, configTASK_CLIMATE_PRIORITY, &handle);
+	assert_param(handle);
 }
 
 
@@ -90,7 +95,7 @@ void Climate::task() {
 ClimateStruct lc;
 
 	for (;;) {
-		QueueSetMemberHandle_t event = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+		QueueSetMemberHandle_t event = xQueueSelectFromSet(xQueueSet, 1000);
 		if (event == xSemaphoreTimer1s) {
 			xSemaphoreTake(event, 0);
 			xQueuePeek(xQueueData, &lc, 0);

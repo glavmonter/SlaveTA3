@@ -35,12 +35,13 @@
 #include <stddef.h>
 #include <stdio.h>
 #include "stm32f10x.h"
-#include "SEGGER_RTT.h"
+//#include "SEGGER_RTT.h"
 #include "hardware.h"
 #include "main.h"
 #include <FreeRTOS.h>
 #include <task.h>
 #include <semphr.h>
+#include "trcRecorder.h"
 #include "maintask.h"
 
 
@@ -56,6 +57,9 @@ SemaphoreHandle_t xMutexSegger;
 static void prvHardwareSetup();
 portTASK_FUNCTION_PROTO(vTestTask1, pvParameters);
 portTASK_FUNCTION_PROTO(vTestTask2, pvParameters);
+portTASK_FUNCTION_PROTO(vConsumer, pvParameters);
+portTASK_FUNCTION_PROTO(vProducer, pvParameters);
+
 /* Private functions */
 
 #if configGENERATE_RUN_TIME_STATS == 1
@@ -84,22 +88,30 @@ uint32_t JumpAddress;
 int main(void) {
 	SystemCoreClockUpdate();
 
-	xMutexSegger = xSemaphoreCreateRecursiveMutex();
-	SEGGER_RTT_ConfigUpBuffer(0, NULL, NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
-	SEGGER_RTT_printf(0, "Hello\n");
+
+
+//	xMutexSegger = xSemaphoreCreateRecursiveMutex();
+	SEGGER_RTT_ConfigUpBuffer(0, "UP", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+	SEGGER_RTT_ConfigDownBuffer(0, "DOWN", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+
+	SEGGER_RTT_ConfigUpBuffer(1, "traceUP", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+	SEGGER_RTT_ConfigDownBuffer(1, "traceDOWN", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+
+	vTraceEnable(TRC_START);
+//	SEGGER_RTT_printf(0, "Hello\n");
 
 	prvHardwareSetup();
 
 	if ((BKP_ReadBackupRegister(BKP_DR1) == 0x1234) and
 		(BKP_ReadBackupRegister(BKP_DR5) == 0xCE94)) {
 
-		SEGGER_RTT_printf(0, "Boot\n");
+//		SEGGER_RTT_printf(0, "Boot\n");
 
 		BKP_WriteBackupRegister(BKP_DR1, 0x0000);
 		BKP_WriteBackupRegister(BKP_DR5, 0x0000);
 
 		/* Start Bootloader */
-		StartExternalApp(0x1FFFF000);
+//		StartExternalApp(0x1FFFF000);
 	}
 
 #if configGENERATE_RUN_TIME_STATS == 1
@@ -108,6 +120,14 @@ TaskHandle_t handle = NULL;
 	xTaskCreate(vStatTask, "Stat", configMINIMAL_STACK_SIZE*3, NULL, tskIDLE_PRIORITY, &handle);
 	assert_param(handle);
 #endif
+
+//	xTaskCreate(vTestTask1, "Task1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
+//	xTaskCreate(vTestTask2, "Task2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
+//
+//	xTaskCreate(vConsumer, "Cons", configMINIMAL_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 1, NULL);
+//	xTaskCreate(vProducer, "Prod", configMINIMAL_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 2, NULL);
+//	vTaskStartScheduler();
+//	for (;;){}
 
 	MainTask &mt = MainTask::Instance();
 	return mt.run();
@@ -157,8 +177,42 @@ GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_Init(CLIMATE_COOLER_PORT, &GPIO_InitStructure);
 }
 
+QueueHandle_t xQueue = NULL;
+
+
+portTASK_FUNCTION(vConsumer, pvParameters) {
+traceString ss = xTraceRegisterString("Consumer_str");
+char buf[16];
+
+	for (;;) {
+		if (xQueue != NULL) {
+			if (xQueueReceive(xQueue, buf, 200) == pdTRUE) {
+				vTracePrintF(ss, buf);
+			}
+		}
+
+		vTaskDelay(200);
+	}
+}
+
+
+portTASK_FUNCTION(vProducer, pvParameters) {
+char buf[16];
+uint32_t index = 0;
+
+	xQueue = xQueueCreate(10, 16);
+	vTraceSetQueueName(xQueue, "ProdQueue");
+
+	for (;;) {
+		snprintf(buf, 16, "DATA: %d", index);
+		index++;
+		xQueueSend(xQueue, buf, portMAX_DELAY);
+	}
+}
 
 portTASK_FUNCTION(vTestTask1, pvParameters) {
+traceString ss = xTraceRegisterString("Task1");
+
 	for (;;) {
 		PORTA_DATA4_OUT ^= 1;
 		vTaskDelay(250);
@@ -168,11 +222,14 @@ portTASK_FUNCTION(vTestTask1, pvParameters) {
 		vTaskDelay(250);
 		PORTA_DATA7_OUT ^= 1;
 		vTaskDelay(250);
-		_log("Ping\n");
+
+		vTracePrintF(ss, "Ping");
 	}
 }
 
 portTASK_FUNCTION(vTestTask2, pvParameters) {
+traceString ss = xTraceRegisterString("Task2");
+
 	for (;;) {
 		PORTB_DATA4_OUT ^= 1;
 		vTaskDelay(250);
@@ -182,7 +239,8 @@ portTASK_FUNCTION(vTestTask2, pvParameters) {
 		vTaskDelay(250);
 		PORTB_DATA7_OUT ^= 1;
 		vTaskDelay(250);
-		_log("Ping\n");
+
+		vTracePrintF(ss, "Ping");
 	}
 }
 
@@ -241,7 +299,7 @@ portTASK_FUNCTION(vStatTask, pvParameters) {
 
 void vApplicationStackOverflowHook(TaskHandle_t handle, char *name) {
 (void)handle;
-	SEGGER_RTT_printf(0, "Stack: %s", name);
+//	SEGGER_RTT_printf(0, "Stack: %s", name);
 	for (;;){}
 }
 

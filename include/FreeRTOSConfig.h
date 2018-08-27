@@ -103,8 +103,8 @@ extern uint32_t SystemCoreClock;
 #define configCPU_CLOCK_HZ				( SystemCoreClock )
 #define configTICK_RATE_HZ				( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES			( 5 )
-#define configMINIMAL_STACK_SIZE		( ( unsigned short ) 100 )
-#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 15 * 1024 ) )
+#define configMINIMAL_STACK_SIZE		( ( unsigned short ) 80 )
+#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 9 * 1024 ) )
 #define configMAX_TASK_NAME_LEN			( 10 )
 #define configUSE_TRACE_FACILITY		1
 #define configUSE_16_BIT_TICKS			0
@@ -118,7 +118,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_COUNTING_SEMAPHORES	0
 
 #ifdef DEBUG
-#define configGENERATE_RUN_TIME_STATS	1
+#define configGENERATE_RUN_TIME_STATS	0
 #else
 #define configGENERATE_RUN_TIME_STATS	0
 #endif
@@ -150,7 +150,7 @@ extern uint32_t SystemCoreClock;
 #define configTASK_CLIMATE_STACK		(configMINIMAL_STACK_SIZE * 2)
 #define configTASK_USBSER_STACK			(configMINIMAL_STACK_SIZE * 2)
 #define configTASK_WIEGAND_STACK		(configMINIMAL_STACK_SIZE * 2)
-#define configTASK_MAIN_STACK			(configMINIMAL_STACK_SIZE * 2)
+#define configTASK_MAIN_STACK			(configMINIMAL_STACK_SIZE * 3)
 
 
 
@@ -208,6 +208,10 @@ to zero. */
 
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() ( ulRunTimeStatsClock = 0UL )
 #define portGET_RUN_TIME_COUNTER_VALUE()	ulRunTimeStatsClock
+#endif
+
+#if (configUSE_TRACE_FACILITY == 1)
+#include <trcRecorder.h>
 #endif
 
 #endif /* FREERTOS_CONFIG_H */
