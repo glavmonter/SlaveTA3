@@ -59,29 +59,38 @@ IOExpanders::IOExpanders() {
 
 	xSemaphoreDiscretIrq = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreDiscretIrq);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetSemaphoreName(xSemaphoreDiscretIrq, "DiscretIRQ");
+#endif
 	xSemaphoreTake(xSemaphoreDiscretIrq, 0);
 
 	xSemaphoreTimer = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimer);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetSemaphoreName(xSemaphoreTimer, "DiscretTimer");
+#endif
 	xSemaphoreTake(xSemaphoreTimer, 0);
 
 	xQueueCommands = xQueueCreate(5, sizeof(IOECommand));
 	assert_param(xQueueCommands);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetQueueName(xQueueCommands, "DiscretCommands");
+#endif
 
 	xQueueSet = xQueueCreateSet(1 + 5 + 2);
 	assert_param(xQueueSet);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetQueueName(xQueueSet, "QueueSet");
-
+#endif
 	xQueueAddToSet(xSemaphoreDiscretIrq, xQueueSet);
 	xQueueAddToSet(xSemaphoreTimer, xQueueSet);
 	xQueueAddToSet(xQueueCommands, xQueueSet);
 
 	xQueueResponce = xQueueCreate(1, sizeof(uint16_t));
 	assert_param(xQueueResponce);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetQueueName(xQueueResponce, "DiscretResponce");
+#endif
 
 	xTimer = xTimerCreate("IOE", 5, pdTRUE, xSemaphoreTimer, TimerCallback);
 	assert_param(xTimer);

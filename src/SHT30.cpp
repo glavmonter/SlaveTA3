@@ -48,7 +48,7 @@ uint8_t cmd[2] = {0x24, 0x0B};
 bool ret = true;
 
 	ret &= m_pDriver->write(m_iAddress, cmd, 2, false);
-	vTaskDelay(35);	// Conversion time
+	vTaskDelay(40);	// Conversion time
 
 uint8_t responce[6];
 	ret &= m_pDriver->read(m_iAddress, responce, 6, false);

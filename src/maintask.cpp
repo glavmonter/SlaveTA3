@@ -450,7 +450,9 @@ void MainTask::Init() {
 
 		xTimerSemaphore = xSemaphoreCreateBinary();
 		assert_param(xTimerSemaphore);
+#if (configUSE_TRACE_FACILITY == 1)
 		vTraceSetSemaphoreName(xTimerSemaphore, "sTimer");
+#endif
 		xSemaphoreTake(xTimerSemaphore, 0);
 
 		xTimer = xTimerCreate("Main", 1000, pdTRUE, xTimerSemaphore, TimerCallback);
@@ -458,11 +460,15 @@ void MainTask::Init() {
 
 		xQueueUsartRx = xQueueCreate(20, sizeof(uint8_t));
 		assert_param(xQueueUsartRx);
+#if (configUSE_TRACE_FACILITY == 1)
 		vTraceSetQueueName(xQueueUsartRx, "qUsartRx");
+#endif
 
 		xQueueWiegand = xQueueCreate(2, sizeof(WiegandStruct));
 		assert_param(xQueueWiegand);
+#if (configUSE_TRACE_FACILITY == 1)
 		vTraceSetQueueName(xQueueWiegand, "qWiegData");
+#endif
 
 		xQueueSet = xQueueCreateSet(1 + 20 + 0);
 		assert_param(xQueueSet);

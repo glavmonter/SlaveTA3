@@ -50,13 +50,17 @@ Wiegand::Wiegand(WiegandChannel channel, QueueHandle_t result_queue) :
 
 	xSemaphoreIRQ = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreIRQ);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetSemaphoreName(xSemaphoreIRQ, channel == WiegandChannel::Channel_1 ? "sWiegIRQ1" : "sWiegIRQ2");
+#endif
 	xSemaphoreTake(xSemaphoreIRQ, 0);
 
 	xSemaphoreTimerTimeout = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimerTimeout);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetSemaphoreName(xSemaphoreTimerTimeout,
 			channel == WiegandChannel::Channel_1 ? "sWiegTO1" : "sWiegTO2");
+#endif
 	xSemaphoreTake(xSemaphoreTimerTimeout, 0);
 
 	xTimer = xTimerCreate("TimerWieg", 20, pdFALSE, xSemaphoreTimerTimeout, vTimerCallback);
@@ -64,8 +68,9 @@ Wiegand::Wiegand(WiegandChannel channel, QueueHandle_t result_queue) :
 
 	xQueueSet = xQueueCreateSet(1 + 1);
 	assert_param(xQueueSet);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetQueueName(xQueueSet, channel == WiegandChannel::Channel_1 ? "qsWieg1" : "qsWieg2");
-
+#endif
 	xQueueAddToSet(xSemaphoreIRQ, xQueueSet);
 	xQueueAddToSet(xSemaphoreTimerTimeout, xQueueSet);
 }

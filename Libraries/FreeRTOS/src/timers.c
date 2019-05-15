@@ -953,7 +953,9 @@ static void prvCheckForValidListAndQueue( void )
 			#else
 			{
 				xTimerQueue = xQueueCreate( ( UBaseType_t ) configTIMER_QUEUE_LENGTH, sizeof( DaemonTaskMessage_t ) );
+#if (configUSE_TRACE_FACILITY == 1)
 				vTraceSetQueueName(xTimerQueue, "TimerQueue");
+#endif
 			}
 			#endif
 

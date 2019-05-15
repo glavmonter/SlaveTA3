@@ -53,18 +53,23 @@ Climate::Climate() {
 
 	xSemaphoreTimer1s = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimer1s);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetSemaphoreName(xSemaphoreTimer1s, "Climate_1s");
+#endif
 	xSemaphoreTake(xSemaphoreTimer1s, 0);
 
 	xSemaphoreTimer60s = xSemaphoreCreateBinary();
 	assert_param(xSemaphoreTimer60s);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetSemaphoreName(xSemaphoreTimer60s, "Climate_60s");
+#endif
 	xSemaphoreTake(xSemaphoreTimer60s, 0);
 
 	xQueueSet = xQueueCreateSet(1 + 1);
 	assert_param(xQueueSet);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetQueueName(xQueueSet, "ClimateQueueSet");
-
+#endif
 	xQueueAddToSet(xSemaphoreTimer1s, xQueueSet);
 	xQueueAddToSet(xSemaphoreTimer60s, xQueueSet);
 
@@ -77,7 +82,9 @@ Climate::Climate() {
 
 	xQueueData = xQueueCreate(1, sizeof(ClimateStruct));
 	assert_param(xQueueData);
+#if (configUSE_TRACE_FACILITY == 1)
 	vTraceSetQueueName(xQueueData, "ClimateData");
+#endif
 	xQueueOverwrite(xQueueData, &m_xClimateData);
 
 	xTaskCreate(task_climate, "Climate", configTASK_CLIMATE_STACK, this, configTASK_CLIMATE_PRIORITY, &handle);
@@ -118,6 +125,7 @@ ClimateStruct lc;
 				_log("SA56 reset hardware: %s\n", m_pI2CDriver->ResetHardware() ? "OK" : "Err");
 			}
 
+			vTaskDelay(5);
 			if (m_pSHT30->UpdateData() == false) {
 				_log("SHT Err\n");
 				_log("SHT Reset hardware: %s\n", m_pI2CDriver->ResetHardware() ? "OK" : "Err");

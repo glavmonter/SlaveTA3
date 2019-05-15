@@ -111,7 +111,7 @@ int main(void) {
 		BKP_WriteBackupRegister(BKP_DR5, 0x0000);
 
 		/* Start Bootloader */
-//		StartExternalApp(0x1FFFF000);
+		StartExternalApp(0x1FFFF000);
 	}
 
 #if configGENERATE_RUN_TIME_STATS == 1
