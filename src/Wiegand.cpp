@@ -99,6 +99,7 @@ void Wiegand::task() {
 				d.WiegandLen = len;
 				d.Channel = m_eChannel;
 				memcpy(d.Data, data, WIEGAND_BUFFER_SIZE * sizeof(data[0]));
+				d.ValidTime = xTaskGetTickCount() + 200;
 				xQueueSend(xWiegandQueue, &d, 5);
 			}
 
@@ -181,6 +182,11 @@ NVIC_InitTypeDef NVIC_InitStructure;
 		_log("Channel is invalid!!!\n");
 		assert_param(0);
 	}
+}
+
+
+uint8_t GetWiegandSizeInBytes(const WiegandStruct &wig) {
+	return wig.WiegandLen / BITS_IN_BYTE + ((wig.WiegandLen % BITS_IN_BYTE) ? 1 : 0);
 }
 
 

@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+message Wieg {
+	required uint32 size = 1;
+	required bytes data = 2;
+}
+
+
+message ResponceAll {
+	optional uint32 PORTA_IDR = 1;
+	optional uint32 PORTB_IDR = 2;
+	optional uint32 PORTA_ODR = 3;
+	optional uint32 PORTB_ODR = 4;
+	optional uint32 RELAYS_IDR = 5;
+	optional uint32 RELAYS_ODR = 6;
+	optional Wieg WiegandCh1 = 7;
+	optional Wieg WiegandCh2 = 8;
+}

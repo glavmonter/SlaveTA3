@@ -27,6 +27,11 @@
 #include "IOExpanders.h"
 #include "Climate.h"
 
+#include "pb.h"
+#include "pb_encode.h"
+#include "pb_decode.h"
+#include "slave.pb.h"
+
 
 #define DEVICE_NAME			"Slave-arm"
 
@@ -91,6 +96,9 @@ void MainTask::task() {
 	_log("FreeHeap: %d\n", xPortGetFreeHeapSize());
 	Init();
 	xTimerStart(xTimer, 5);
+
+	sWiegand1.ValidTime = 0;
+	sWiegand2.ValidTime = 0;
 
 uint8_t received_byte = 0;
 WiegandStruct wiegand;
@@ -201,6 +209,10 @@ uint16_t ioe_responce;
 					ProcessClimate(m_pWake->GetCommand());
 					break;
 
+				case CMD_READ_ALL:
+
+					break;
+
 				default:
 					_log("Default: 0x%02X\n", m_pWake->GetCommand());
 					m_pWake->ProcessTx(0x01, CMD_ERR, 0);
@@ -210,7 +222,13 @@ uint16_t ioe_responce;
 
 		} else if (event == xQueueWiegand) {
 			xQueueReceive(event, &wiegand, 0);
-			ProcessWiegand(CMD_WIEGAND, wiegand);
+			if (wiegand.Channel == Wiegand::WiegandChannel::Channel_1) {
+				memcpy(&sWiegand1, &wiegand, sizeof(WiegandStruct));
+			}
+			if (wiegand.Channel == Wiegand::WiegandChannel::Channel_2) {
+				memcpy(&sWiegand2, &wiegand, sizeof(WiegandStruct));
+			}
+			// ProcessWiegand(CMD_WIEGAND, wiegand);
 
 		} else {
 			_log("!!!Pizda!!!\n");
@@ -367,6 +385,85 @@ uint8_t len = 0;
 	m_pWake->ProcessTx(0x01, CMD_ERR, 0);
 }
 
+void MainTask::ProcessReadAll(Command cmd) {
+uint8_t porta_idr = PORTA_IDR();
+uint8_t porta_odr = PORTA_ODR();
+uint8_t portb_idr = PORTB_IDR();
+uint8_t portb_odr = PORTB_ODR();
+
+ResponceAll responce;
+	memset(&responce, 0, sizeof(responce));
+
+uint8_t subcommand = m_pWake->RxData[0];
+
+	if (subcommand & SCMD_PORTS_IDR) {
+		responce.has_PORTA_IDR = responce.has_PORTB_IDR = true;
+		responce.PORTA_IDR = porta_idr;
+		responce.PORTB_IDR = portb_idr;
+	}
+
+	if (subcommand & SCMD_PORTS_ODR) {
+		responce.has_PORTA_ODR = responce.has_PORTB_ODR = true;
+		responce.PORTA_ODR = porta_odr;
+		responce.PORTB_ODR = portb_odr;
+	}
+
+	uint16_t ioe_responce;
+	IOECommand ioe_cmd;
+	const IOExpanders &expanders = IOExpanders::Instance();
+
+	if (subcommand & SCMD_RELAYS_IDR) {
+		ioe_cmd.cmd = CMD_RELAYS_IDR;
+		if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 5) == pdTRUE) {
+			if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+				responce.has_RELAYS_IDR = true;
+				responce.RELAYS_IDR = ioe_responce;
+			}
+		}
+	}
+
+	if (subcommand & SCMD_RELAYS_ODR) {
+		ioe_cmd.cmd = CMD_RELAYS_ODRR;
+		if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 5) == pdTRUE) {
+			if (xQueueSend(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+				responce.has_RELAYS_ODR = true;
+				responce.RELAYS_ODR = ioe_responce;
+			}
+		}
+	}
+
+	TickType_t currentTick = xTaskGetTickCount();
+	if (subcommand & SCMD_WIEGAND_1) {
+		if ((sWiegand1.ValidTime > 0) && (sWiegand1.ValidTime < currentTick)) {
+			responce.WiegandCh1.size = sWiegand1.WiegandLen;
+			uint8_t max_bytes = GetWiegandSizeInBytes(sWiegand1);
+			responce.WiegandCh1.data.size = max_bytes;
+			memcpy(responce.WiegandCh1.data.bytes, sWiegand1.Data, max_bytes);
+			responce.has_WiegandCh1 = true;
+			sWiegand1.ValidTime = 0;
+		}
+	}
+
+	if (subcommand & SCMD_WIEGAND_2) {
+		if ((sWiegand2.ValidTime > 0) && (sWiegand2.ValidTime < currentTick)) {
+			responce.WiegandCh2.size = sWiegand2.WiegandLen;
+			uint8_t max_bytes = GetWiegandSizeInBytes(sWiegand2);
+			responce.WiegandCh2.data.size = max_bytes;
+			memcpy(responce.WiegandCh2.data.bytes, sWiegand2.Data, max_bytes);
+			responce.has_WiegandCh2 = true;
+			sWiegand2.ValidTime = 0;
+		}
+	}
+
+	pb_ostream_t nanopb_ostream;
+	nanopb_ostream = pb_ostream_from_buffer(m_pWake->TxData, FRAME_SIZE);
+	if (pb_encode(&nanopb_ostream, ResponceAll_fields, &responce) == true) {
+		m_pWake->ProcessTx(0x01, cmd, nanopb_ostream.bytes_written);
+	} else {
+		m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+	}
+}
+
 
 void MainTask::ProcessWiegand(Command cmd, const WiegandStruct &wig) {
 
@@ -379,11 +476,11 @@ uint8_t max_bytes = wig.WiegandLen / BITS_IN_BYTE + ((wig.WiegandLen % BITS_IN_B
 
 
 void MainTask::ProcessPORTs(Command cmd) {
-uint8_t porta_idr = (~GPIOD->IDR) & 0x0F;
-uint8_t portb_idr = (~GPIOE->IDR) & 0x0F;
+uint8_t porta_idr = PORTA_IDR();
+uint8_t portb_idr = PORTB_IDR();
 
-uint8_t porta_odr = ((~GPIOD->ODR) >> 4) & 0x0F;
-uint8_t portb_odr = ((~GPIOE->ODR) >> 4) & 0x0F;
+uint8_t porta_odr = PORTA_ODR();
+uint8_t portb_odr = PORTB_ODR();
 
 	_log("porta_idr: %02X\n", porta_idr);
 	_log("portb_idr: %02X\n", portb_idr);

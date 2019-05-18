@@ -21,7 +21,7 @@
 #include "Commands.h"
 
 
-#define FRAME_SIZE				32
+#define FRAME_SIZE				128
 
 
 class Wake {

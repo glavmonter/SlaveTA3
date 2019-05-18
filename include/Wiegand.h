@@ -72,7 +72,10 @@ typedef struct WiegandStruct_ {
 	Wiegand::WiegandChannel Channel;
 	uint8_t WiegandLen;
 	uint8_t Data[WIEGAND_BUFFER_SIZE];
+	TickType_t ValidTime; /// Время до которого данные валидны
 } WiegandStruct;
+
+uint8_t GetWiegandSizeInBytes(const WiegandStruct &wig);
 
 
 #ifdef __cplusplus

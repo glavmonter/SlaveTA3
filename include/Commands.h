@@ -48,7 +48,20 @@ typedef enum Command_ {
 	CMD_CLIMATE_SET					= 0x17, /// Выбор режима, включение
 
 	CMD_RS485_INFO					= 0x20, /// RS485 Информация
+
+	CMD_READ_ALL					= 0x50, /// Прочитать всю информацию по входам
+
 } Command;
+
+
+typedef enum SubCommand_ {
+	SCMD_PORTS_IDR  =  (1 << 0),
+	SCMD_PORTS_ODR  =  (1 << 1),
+	SCMD_RELAYS_IDR =  (1 << 2),
+	SCMD_RELAYS_ODR =  (1 << 3),
+	SCMD_WIEGAND_1  =  (1 << 4),
+	SCMD_WIEGAND_2  =  (1 << 5),
+} SubCommand;
 
 
 #endif /* COMMANDS_H_ */

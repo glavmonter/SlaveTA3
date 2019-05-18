@@ -75,6 +75,13 @@ private:
 	// External Classes
 	Wake *m_pWake;
 
+	WiegandStruct sWiegand1;
+	WiegandStruct sWiegand2;
+
+	inline uint8_t PORTA_IDR() {return (~GPIOD->IDR) & 0x0F;}
+	inline uint8_t PORTB_IDR() {return (~GPIOE->IDR) & 0x0F;}
+	inline uint8_t PORTA_ODR() {return ((~GPIOD->ODR) >> 4) & 0x0F;}
+	inline uint8_t PORTB_ODR() {return ((~GPIOE->ODR) >> 4) & 0x0F;}
 
 	/* Process commands */
 	void ProcessCmdInfo();
@@ -83,6 +90,7 @@ private:
 	void ProcessPORTs(Command cmd);
 
 	void ProcessClimate(Command cmd);
+	void ProcessReadAll(Command cmd);
 };
 
 
