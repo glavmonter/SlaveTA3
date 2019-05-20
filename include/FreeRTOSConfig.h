@@ -106,7 +106,7 @@ extern uint32_t SystemCoreClock;
 #define configMINIMAL_STACK_SIZE		( ( unsigned short ) 80 )
 #define configTOTAL_HEAP_SIZE			( ( size_t ) ( 9 * 1024 ) )
 #define configMAX_TASK_NAME_LEN			( 10 )
-#define configUSE_TRACE_FACILITY		0
+#define configUSE_TRACE_FACILITY		1
 #define configUSE_16_BIT_TICKS			0
 #define configIDLE_SHOULD_YIELD			1
 #define configUSE_MUTEXES				1
@@ -143,7 +143,7 @@ extern uint32_t SystemCoreClock;
 #define configTASK_CLIMATE_PRIORITY		(configMAX_PRIORITIES - 2)  // 3
 #define configTASK_USBSER_PRIORITY		(tskIDLE_PRIORITY)  // 3
 #define configTASK_WIEGAND_PRIORITY		(configMAX_PRIORITIES - 2)	// 3
-#define configTASK_MAIN_PRIORITY		(tskIDLE_PRIORITY)
+#define configTASK_MAIN_PRIORITY		(configMAX_PRIORITIES - 1)
 
 
 #define configTASK_IOE_STACK			(configMINIMAL_STACK_SIZE * 2)

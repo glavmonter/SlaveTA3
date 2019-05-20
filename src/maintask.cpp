@@ -33,6 +33,7 @@
 #include "slave.pb.h"
 
 
+
 #define DEVICE_NAME			"Slave-arm"
 
 __attribute__ ((section(".vars_version_sect")))
@@ -72,6 +73,8 @@ uint32_t StartExternalApp(uint32_t address) {
  * Создание таска ОСРВ с минимальным приоритетом (tskIDLE_PRIORITY)
  */
 MainTask::MainTask() {
+	event = xTraceRegisterString("MainEvent");
+
 	SEGGER_RTT_printf(0, "Free: %d\n", xPortGetFreeHeapSize());
 	xTaskCreate(task_main, "Main", configTASK_MAIN_STACK, this, configTASK_MAIN_PRIORITY, &handle);
 	assert_param(handle);
@@ -210,7 +213,7 @@ uint16_t ioe_responce;
 					break;
 
 				case CMD_READ_ALL:
-
+					ProcessReadAll(m_pWake->GetCommand());
 					break;
 
 				default:
@@ -386,6 +389,8 @@ uint8_t len = 0;
 }
 
 void MainTask::ProcessReadAll(Command cmd) {
+	vTracePrint(event, "ReadAll Start");
+
 uint8_t porta_idr = PORTA_IDR();
 uint8_t porta_odr = PORTA_ODR();
 uint8_t portb_idr = PORTB_IDR();
@@ -425,7 +430,7 @@ uint8_t subcommand = m_pWake->RxData[0];
 	if (subcommand & SCMD_RELAYS_ODR) {
 		ioe_cmd.cmd = CMD_RELAYS_ODRR;
 		if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 5) == pdTRUE) {
-			if (xQueueSend(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+			if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
 				responce.has_RELAYS_ODR = true;
 				responce.RELAYS_ODR = ioe_responce;
 			}
@@ -433,6 +438,12 @@ uint8_t subcommand = m_pWake->RxData[0];
 	}
 
 	TickType_t currentTick = xTaskGetTickCount();
+
+	sWiegand1.ValidTime = xTaskGetTickCount() - 20;
+	sWiegand1.WiegandLen = 17;
+	sWiegand1.Data[0] = 0xCB;
+	sWiegand1.Data[1] = 0xD9;
+	sWiegand1.Data[2] = 0x73;
 	if (subcommand & SCMD_WIEGAND_1) {
 		if ((sWiegand1.ValidTime > 0) && (sWiegand1.ValidTime < currentTick)) {
 			responce.WiegandCh1.size = sWiegand1.WiegandLen;
@@ -444,6 +455,11 @@ uint8_t subcommand = m_pWake->RxData[0];
 		}
 	}
 
+	sWiegand2.ValidTime = xTaskGetTickCount() - 20;
+	sWiegand2.WiegandLen = 18;
+	sWiegand2.Data[0] = 0xA8;
+	sWiegand2.Data[1] = 0x35;
+	sWiegand2.Data[2] = 0xCC;
 	if (subcommand & SCMD_WIEGAND_2) {
 		if ((sWiegand2.ValidTime > 0) && (sWiegand2.ValidTime < currentTick)) {
 			responce.WiegandCh2.size = sWiegand2.WiegandLen;
@@ -459,9 +475,12 @@ uint8_t subcommand = m_pWake->RxData[0];
 	nanopb_ostream = pb_ostream_from_buffer(m_pWake->TxData, FRAME_SIZE);
 	if (pb_encode(&nanopb_ostream, ResponceAll_fields, &responce) == true) {
 		m_pWake->ProcessTx(0x01, cmd, nanopb_ostream.bytes_written);
+		_log("Transmit %d bytes\n", nanopb_ostream.bytes_written);
 	} else {
 		m_pWake->ProcessTx(0x01, CMD_ERR, 0);
 	}
+
+	vTracePrint(event, "ReadAll Stop");
 }
 
 

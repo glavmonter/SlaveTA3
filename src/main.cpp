@@ -98,7 +98,7 @@ int main(void) {
 	SEGGER_RTT_ConfigDownBuffer(1, "traceDOWN", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 
 	vTraceEnable(TRC_START);
-//	SEGGER_RTT_printf(0, "Hello\n");
+	SEGGER_RTT_printf(0, "Hello\n");
 
 	prvHardwareSetup();
 

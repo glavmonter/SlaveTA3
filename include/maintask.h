@@ -24,6 +24,7 @@
 #include "common.h"
 #include "Wake.h"
 #include "Wiegand.h"
+#include "trcRecorder.h"
 
 
 uint32_t StartExternalApp(uint32_t address);
@@ -50,6 +51,8 @@ public:
 private:
 	Wiegand *m_pWiegandCh1;
 	Wiegand *m_pWiegandCh2;
+
+	traceString event;
 
 public:
 	USART_TypeDef *m_pUSART = SERIAL_USB_USART;

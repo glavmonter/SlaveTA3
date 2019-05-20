@@ -133,7 +133,8 @@ uint16_t resp = false;
 
 			switch (cmd.cmd) {
 			case CMD_RELAYS_ODRR:
-				resp = RelaysRead();
+//				resp = RelaysRead();
+				resp = relays_odr_last;
 				xQueueOverwrite(xQueueResponce, &resp);
 				break;
 
@@ -337,6 +338,7 @@ bool IOExpanders::RelaysWrite(uint16_t data) {
 uint8_t data_l, data_h;
 	data_l = data & 0x1F;
 	data_h = (data & 0x3E0) >> 5;
+	relays_odr_last = data;
 	return RelaysWrite(data_l, data_h);
 }
 
@@ -344,12 +346,14 @@ uint8_t data_l, data_h;
 bool IOExpanders::RelaysWriteOnes(uint16_t data) {
 uint16_t odr = RelaysRead();
 	odr |= data;
+	relays_odr_last = odr;
 	return RelaysWrite(odr);
 }
 
 bool IOExpanders::RelaysWriteZeros(uint16_t data) {
 uint16_t odr = RelaysRead();
 	odr &= ~data;
+	relays_odr_last = odr;
 	return RelaysWrite(odr);
 }
 
@@ -359,7 +363,7 @@ uint8_t data_l, data_h;
 
 bool ret;
 uint8_t retries;
-
+	_log("RelaysRead\n");
 	retries = 10;
 	do {
 		ret = ReadRegister(IOE_ADDR_RELAYS, MCP23017<BANK_1>::GPIOXA(), data_l);

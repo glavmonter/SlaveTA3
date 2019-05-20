@@ -93,6 +93,7 @@ protected:
 
 private:
 	I2C_TypeDef *m_pI2C = I2C1;
+	uint16_t relays_odr_last = 0;
 
 	void ConfigureDMA();
 	void InitHardware();
