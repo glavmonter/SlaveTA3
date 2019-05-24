@@ -37,6 +37,7 @@ public:
 
 	Status ProcessInByte(uint8_t data_byte);
 	Command GetCommand() {return (Command)Rx_Cmd;}
+	uint8_t GetSize() {return Rx_Nbt;}
 
 	uint8_t RxData[FRAME_SIZE];
 

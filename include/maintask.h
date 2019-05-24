@@ -29,6 +29,16 @@
 
 uint32_t StartExternalApp(uint32_t address);
 
+#define MAX_PULSE_PINS			5
+
+typedef struct PulseStruct_ {
+	uint32_t pin;
+	uint32_t width; // ms
+	uint32_t delay;
+	TimerHandle_t timer;
+} PulseStruct;
+
+
 /**
  * @class MainTask
  */
@@ -57,6 +67,7 @@ private:
 public:
 	USART_TypeDef *m_pUSART = SERIAL_USB_USART;
 	QueueHandle_t xQueueUsartRx;
+	QueueHandle_t xQueuePulseTimer;
 
 private:
 	MainTask();
@@ -75,6 +86,8 @@ private:
 	SemaphoreHandle_t xTimerSemaphore;
 	QueueHandle_t xQueueWiegand;
 
+	PulseStruct xPulseStruct[MAX_PULSE_PINS];
+
 	// External Classes
 	Wake *m_pWake;
 
@@ -91,9 +104,14 @@ private:
 	void ProcessBoot();
 	void ProcessWiegand(Command cmd, const WiegandStruct &wig);
 	void ProcessPORTs(Command cmd);
+	void PORTA_Write(uint8_t odr);
+	void PORTB_Write(uint8_t odr);
+	void PORTA_Toggle(uint8_t toggle);
+	void PORTB_Toggle(uint8_t toggle);
 
 	void ProcessClimate(Command cmd);
 	void ProcessReadAll(Command cmd);
+	void ProcessPulse(Command cmd);
 };
 
 

@@ -50,6 +50,12 @@ SemaphoreHandle_t sem = static_cast<SemaphoreHandle_t>(pvTimerGetTimerID(xTimer)
 }
 
 
+static void TimerPulseCallback(TimerHandle_t xTimer) {
+uint32_t timer_id = reinterpret_cast<uint32_t>(pvTimerGetTimerID(xTimer));
+	xQueueSend(MainTask::Instance().xQueuePulseTimer, &timer_id, 10);
+}
+
+
 typedef void (*pFunction)(void);
 #define BOOTLOADER_ADDRESS				0x1FFFF000
 
@@ -134,6 +140,7 @@ uint16_t ioe_responce;
 				case CMD_PORTS_ODRW:
 				case CMD_PORTS_SET:
 				case CMD_PORTS_RESET:
+				case CMD_PORTS_TOGGLE:
 					ProcessPORTs(cmd);
 					break;
 
@@ -147,6 +154,7 @@ uint16_t ioe_responce;
 				case CMD_RELAYS_ODRW:
 				case CMD_RELAYS_SET:
 				case CMD_RELAYS_RESET:
+				case CMD_RELAYS_TOGGLE:
 					ioe_cmd.cmd = cmd;
 					ioe_cmd.data[0] = m_pWake->RxData[0];
 					ioe_cmd.data[1] = m_pWake->RxData[1];
@@ -216,6 +224,10 @@ uint16_t ioe_responce;
 					ProcessReadAll(m_pWake->GetCommand());
 					break;
 
+				case CMD_PULSE:
+					ProcessPulse(m_pWake->GetCommand());
+					break;
+
 				default:
 					_log("Default: 0x%02X\n", m_pWake->GetCommand());
 					m_pWake->ProcessTx(0x01, CMD_ERR, 0);
@@ -232,6 +244,11 @@ uint16_t ioe_responce;
 				memcpy(&sWiegand2, &wiegand, sizeof(WiegandStruct));
 			}
 			// ProcessWiegand(CMD_WIEGAND, wiegand);
+
+		} else if (event == xQueuePulseTimer) {
+			uint32_t timer_index;
+			xQueueReceive(event, &timer_index, 0);
+			_log("Timer Pulse Callback\n");
 
 		} else {
 			_log("!!!Pizda!!!\n");
@@ -388,6 +405,56 @@ uint8_t len = 0;
 	m_pWake->ProcessTx(0x01, CMD_ERR, 0);
 }
 
+
+void MainTask::ProcessPulse(Command cmd) {
+Pulse pulseproto;
+	pb_istream_t stream = pb_istream_from_buffer(m_pWake->RxData, m_pWake->GetSize());
+	if (pb_decode(&stream, Pulse_fields, &pulseproto)) {
+		uint32_t pin = pulseproto.pin;
+		bool pin_free = true;
+		for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
+			if (xPulseStruct[i].pin == pin) {
+				pin_free = false;
+				break;
+			}
+		}
+
+		if (pin_free == false) {
+			_log("Pin %d already in Pulse\n", pin);
+			m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+			return;
+		}
+
+		// Ищем свободный пин
+		uint8_t pin_index_free = 0;
+		for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
+			if (xPulseStruct[i].pin == UINT32_MAX) {
+				// Свободный найден
+				pin_index_free = i;
+				break;
+			}
+		}
+
+		xPulseStruct[pin_index_free].pin = pin;
+		xPulseStruct[pin_index_free].width = pulseproto.width;
+		if (pulseproto.has_delay) {
+			xPulseStruct[pin_index_free].delay = pulseproto.delay;
+		} else {
+			xPulseStruct[pin_index_free].delay = 0;
+		}
+
+		_log("Add new Pulse at pin %d\n", pin);
+		_log("Delay: %d ms\n", xPulseStruct[pin_index_free].delay);
+		_log("Width: %d ms\n", xPulseStruct[pin_index_free].width);
+
+		if (xPulseStruct[pin_index_free].delay == 0) {
+			_log("Zero delay\n");
+
+		}
+	}
+}
+
+
 void MainTask::ProcessReadAll(Command cmd) {
 	vTracePrint(event, "ReadAll Start");
 
@@ -396,7 +463,7 @@ uint8_t porta_odr = PORTA_ODR();
 uint8_t portb_idr = PORTB_IDR();
 uint8_t portb_odr = PORTB_ODR();
 
-ResponceAll responce;
+ResponseAll responce;
 	memset(&responce, 0, sizeof(responce));
 
 uint8_t subcommand = m_pWake->RxData[0];
@@ -473,7 +540,7 @@ uint8_t subcommand = m_pWake->RxData[0];
 
 	pb_ostream_t nanopb_ostream;
 	nanopb_ostream = pb_ostream_from_buffer(m_pWake->TxData, FRAME_SIZE);
-	if (pb_encode(&nanopb_ostream, ResponceAll_fields, &responce) == true) {
+	if (pb_encode(&nanopb_ostream, ResponseAll_fields, &responce) == true) {
 		m_pWake->ProcessTx(0x01, cmd, nanopb_ostream.bytes_written);
 		_log("Transmit %d bytes\n", nanopb_ostream.bytes_written);
 	} else {
@@ -491,6 +558,33 @@ uint8_t max_bytes = wig.WiegandLen / BITS_IN_BYTE + ((wig.WiegandLen % BITS_IN_B
 	m_pWake->TxData[1] = wig.WiegandLen;
 	memcpy(&m_pWake->TxData[2], wig.Data, max_bytes);
 	m_pWake->ProcessTx(0x01, cmd, max_bytes + 2);
+}
+
+
+void MainTask::PORTA_Write(uint8_t odr) {
+	PORTA_DATA4_OUT = (odr & 0x01) ? 0 : 1;
+	PORTA_DATA5_OUT = (odr & 0x02) ? 0 : 1;
+	PORTA_DATA6_OUT = (odr & 0x04) ? 0 : 1;
+	PORTA_DATA7_OUT = (odr & 0x08) ? 0 : 1;
+}
+
+void MainTask::PORTB_Write(uint8_t odr) {
+	PORTB_DATA4_OUT = (odr & 0x01) ? 0 : 1;
+	PORTB_DATA5_OUT = (odr & 0x02) ? 0 : 1;
+	PORTB_DATA6_OUT = (odr & 0x04) ? 0 : 1;
+	PORTB_DATA7_OUT = (odr & 0x08) ? 0 : 1;
+}
+
+void MainTask::PORTA_Toggle(uint8_t toggle) {
+	uint8_t odr = PORTA_ODR();
+	odr = odr ^ toggle;
+	PORTA_Write(odr);
+}
+
+void MainTask::PORTB_Toggle(uint8_t toggle) {
+	uint8_t odr = PORTB_ODR();
+	odr = odr ^ toggle;
+	PORTB_Write(odr);
 }
 
 
@@ -521,16 +615,9 @@ uint8_t portb_odr = PORTB_ODR();
 
 	} else if (cmd == CMD_PORTS_ODRW) {
 		uint8_t odr = m_pWake->RxData[0];
-		PORTA_DATA4_OUT = (odr & 0x01) ? 0 : 1;
-		PORTA_DATA5_OUT = (odr & 0x02) ? 0 : 1;
-		PORTA_DATA6_OUT = (odr & 0x04) ? 0 : 1;
-		PORTA_DATA7_OUT = (odr & 0x08) ? 0 : 1;
-
+		PORTA_Write(odr);
 		odr = m_pWake->RxData[1];
-		PORTB_DATA4_OUT = (odr & 0x01) ? 0 : 1;
-		PORTB_DATA5_OUT = (odr & 0x02) ? 0 : 1;
-		PORTB_DATA6_OUT = (odr & 0x04) ? 0 : 1;
-		PORTB_DATA7_OUT = (odr & 0x08) ? 0 : 1;
+		PORTB_Write(odr);
 		m_pWake->ProcessTx(0x01, CMD_PORTS_ODRW, 0);
 		return;
 
@@ -549,6 +636,18 @@ uint8_t portb_odr = PORTB_ODR();
 		GPIOE->BSRR = odr;
 		m_pWake->ProcessTx(0x01, CMD_PORTS_RESET, 0);
 		return;
+
+	} else if (cmd == CMD_PORTS_TOGGLE) {
+		uint8_t toggle_bits = m_pWake->RxData[0] & 0x0F;
+		uint8_t odr = PORTA_ODR();
+		odr = odr ^ toggle_bits;
+		PORTA_Write(odr);
+
+		toggle_bits = m_pWake->RxData[1] & 0x0F;
+		odr = PORTB_ODR();
+		odr = odr ^ toggle_bits;
+		PORTB_Write(odr);
+		m_pWake->ProcessTx(0x01, CMD_PORTS_TOGGLE, 0);
 	}
 
 	_log("Unknown command: 0x%02X\n", cmd);
@@ -586,12 +685,22 @@ void MainTask::Init() {
 		vTraceSetQueueName(xQueueWiegand, "qWiegData");
 #endif
 
-		xQueueSet = xQueueCreateSet(1 + 20 + 0);
+		xQueuePulseTimer = xQueueCreate(1, sizeof(uint32_t));
+		assert_param(xQueuePulseTimer);
+		for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
+			memset(&xPulseStruct[i], 0, sizeof(xPulseStruct[0]));
+			xPulseStruct[i].pin = UINT32_MAX;
+			xPulseStruct[i].timer = xTimerCreate("Pulse", 1000, pdFALSE, (void *)i, TimerPulseCallback);
+			assert_param(xPulseStruct[i].timer);
+		}
+
+		xQueueSet = xQueueCreateSet(1 + 20 + 2 + 1);
 		assert_param(xQueueSet);
 
 		xQueueAddToSet(xTimerSemaphore, xQueueSet);
 		xQueueAddToSet(xQueueUsartRx, xQueueSet);
 		xQueueAddToSet(xQueueWiegand, xQueueSet);
+		xQueueAddToSet(xQueuePulseTimer, xQueueSet);
 
 		m_pWiegandCh1 = new Wiegand(Wiegand::Channel_1, xQueueWiegand);
 		assert_param(m_pWiegandCh1);

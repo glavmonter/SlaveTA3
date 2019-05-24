@@ -51,6 +51,10 @@ typedef enum Command_ {
 
 	CMD_READ_ALL					= 0x50, /// Прочитать всю информацию по входам
 
+	CMD_PULSE						= 0x51, /// Выдать импульсный сигнал
+	CMD_PORTS_TOGGLE				= 0x52,
+	CMD_RELAYS_TOGGLE				= 0x53,
+
 } Command;
 
 
