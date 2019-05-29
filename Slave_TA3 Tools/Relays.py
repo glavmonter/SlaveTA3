@@ -32,7 +32,7 @@ parser.add_argument('--list', '-l', action='store_true', help='List available CO
 parser.add_argument('Port', type=str, nargs='?', help='COM port name, COMx')
 parser.add_argument('Adr', type=str, nargs='?', help='Address: [1, 126]')
 parser.add_argument('Cmd', type=str, nargs='?', help='Command: RI (Read input), RO (Read output), '
-                                                     'WZ (Write Zeros), WO (Write Ones), WD (Write Data)')
+                                                     'WZ (Write Zeros), WO (Write Ones), WD (Write Data), WT (Toggle)')
 
 parser.add_argument('Data', type=str, nargs='?', help='Data for Relays (binary, 10 bits, xxxxx_xxxxx)')
 args = parser.parse_args()
@@ -57,7 +57,7 @@ if (args.Adr is None) or (args.Cmd is None):
 
 args.Cmd = args.Cmd.upper()
 
-if not (args.Cmd in ['RI', 'RO', 'WZ', 'WO', 'WD']):
+if not (args.Cmd in ['RI', 'RO', 'WZ', 'WO', 'WD', 'WT']):
     sys.stderr.write('Command not valid')
     parser.print_help()
     parser.exit(2)
@@ -72,7 +72,7 @@ except ValueError as err:
     parser.exit(2)
 
 
-need_data = args.Cmd in ['WZ', 'WO', 'WD']
+need_data = args.Cmd in ['WZ', 'WO', 'WD', 'WT']
 if need_data and (args.Data is None):
     sys.stderr.write('Command {} need defined Data'.format(args.Cmd))
     parser.print_help()
@@ -94,7 +94,8 @@ commands = {'RI': relays.read_idr,
             'RO': relays.read_odr,
             'WZ': relays.write_zeros,
             'WO': relays.write_ones,
-            'WD': relays.write_data}
+            'WD': relays.write_data,
+            'WT': relays.write_toggle}
 
 if args.Cmd in ['RI', 'RO']:
     ret, data = commands[args.Cmd]()

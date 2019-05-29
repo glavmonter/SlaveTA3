@@ -88,16 +88,16 @@ uint32_t JumpAddress;
 int main(void) {
 	SystemCoreClockUpdate();
 
-
-
 //	xMutexSegger = xSemaphoreCreateRecursiveMutex();
 	SEGGER_RTT_ConfigUpBuffer(0, "UP", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 	SEGGER_RTT_ConfigDownBuffer(0, "DOWN", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 
+#if configUSE_TRACE_FACILITY == 1
 	SEGGER_RTT_ConfigUpBuffer(1, "traceUP", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 	SEGGER_RTT_ConfigDownBuffer(1, "traceDOWN", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 
 	vTraceEnable(TRC_START);
+#endif
 	SEGGER_RTT_printf(0, "Hello\n");
 
 	prvHardwareSetup();

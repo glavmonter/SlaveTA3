@@ -576,6 +576,26 @@ class Relays:
             sys.stderr.write(str(err) + '\n')
             return False
 
+    def write_toggle(self, data):
+        try:
+            ser = serial.Serial(port=self._port, baudrate=BAUDRATE, timeout=0.1)
+            request = Wake.wake_transmit(cmd=Commands.RELAYS_TOGGLE, data=struct.pack('>H', data), adr=self._address)
+            ser.write(request)
+            ret = Wake.wake_decode(ser.read(64))
+            print('Request:  ', _humane_bytes(request))
+            print('Response: ', _humane_bytes(ret))
+            ser.close()
+
+            if Wake.wake_check_crc(ret) is False:
+                return False
+            if ret[2] != Commands.RELAYS_TOGGLE.value:
+                return False
+            return True
+
+        except serial.SerialException as err:
+            sys.stderr.write(str(err) + '\n')
+            return False
+
 
 class Climate:
     def __init__(self, port, address=0x02):

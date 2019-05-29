@@ -133,7 +133,6 @@ uint16_t resp = false;
 
 			switch (cmd.cmd) {
 			case CMD_RELAYS_ODRR:
-//				resp = RelaysRead();
 				resp = relays_odr_last;
 				xQueueOverwrite(xQueueResponce, &resp);
 				break;
@@ -150,6 +149,11 @@ uint16_t resp = false;
 
 			case CMD_RELAYS_SET:
 				resp = RelaysWriteOnes((cmd.data[0] << 8) | cmd.data[1]);
+				xQueueOverwrite(xQueueResponce, &resp);
+				break;
+
+			case CMD_RELAYS_TOGGLE:
+				resp = RelaysWriteToggle((cmd.data[0] << 8) | cmd.data[1]);
 				xQueueOverwrite(xQueueResponce, &resp);
 				break;
 
@@ -344,19 +348,25 @@ uint8_t data_l, data_h;
 
 
 bool IOExpanders::RelaysWriteOnes(uint16_t data) {
-uint16_t odr = RelaysRead();
+uint16_t odr = relays_odr_last;
 	odr |= data;
 	relays_odr_last = odr;
 	return RelaysWrite(odr);
 }
 
 bool IOExpanders::RelaysWriteZeros(uint16_t data) {
-uint16_t odr = RelaysRead();
+uint16_t odr = relays_odr_last;
 	odr &= ~data;
 	relays_odr_last = odr;
 	return RelaysWrite(odr);
 }
 
+bool IOExpanders::RelaysWriteToggle(uint16_t data) {
+uint16_t odr = relays_odr_last;
+	odr ^= data;
+	relays_odr_last = odr;
+	return RelaysWrite(odr);
+}
 
 uint16_t IOExpanders::RelaysRead() {
 uint8_t data_l, data_h;

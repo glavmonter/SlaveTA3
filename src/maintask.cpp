@@ -648,6 +648,7 @@ uint8_t portb_odr = PORTB_ODR();
 		odr = odr ^ toggle_bits;
 		PORTB_Write(odr);
 		m_pWake->ProcessTx(0x01, CMD_PORTS_TOGGLE, 0);
+		return;
 	}
 
 	_log("Unknown command: 0x%02X\n", cmd);

@@ -81,6 +81,7 @@ protected:
 	bool RelaysWrite(uint16_t data);
 	bool RelaysWriteOnes(uint16_t data);
 	bool RelaysWriteZeros(uint16_t data);
+	bool RelaysWriteToggle(uint16_t data);
 
 	uint16_t RelaysRead();
 	uint16_t RelaysReadIDR();
