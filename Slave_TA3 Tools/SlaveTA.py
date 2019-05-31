@@ -46,6 +46,7 @@ class Commands(Enum):
 
     READ_ALL = 0x50
 
+    PULSE = 0x51
     PORTS_TOGGLE = 0x52
     RELAYS_TOGGLE = 0x53
 
@@ -90,6 +91,29 @@ def get_info(port, address):
     except struct.error as err:
         sys.stderr.write('Can not parse returned data, {}\n'.format(str(err)))
         return None, None, None, None
+
+
+def send_pulse(port, address, pin, width, delay=0):
+    ret_err = None
+    try:
+        ser = serial.Serial(port=port, baudrate=BAUDRATE, timeout=0.1)
+        pulse = slave_pb2.Pulse()
+        pulse.pin = pin
+        pulse.width = width
+        if delay != 0:
+            pulse.delay = delay
+        data = pulse.SerializeToString()
+        request = Wake.wake_transmit(Commands.PULSE, data, address)
+        print('data: ', _humane_bytes(data))
+        print('request: ', _humane_bytes(request))
+        ser.write(request)
+        ret = Wake.wake_decode(ser.read(256))
+        print('Response: {} ({} bytes)'.format(_humane_bytes(ret), len(ret)))
+        ser.close()
+
+    except serial.SerialException as err:
+        sys.stderr.write(str(err) + '\n')
+    return ret_err
 
 
 def get_all(port, address, mask):

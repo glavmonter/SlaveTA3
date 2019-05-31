@@ -80,6 +80,7 @@ uint32_t StartExternalApp(uint32_t address) {
  */
 MainTask::MainTask() {
 	event = xTraceRegisterString("MainEvent");
+	actorPulse = xTraceRegisterString("Pulse");
 
 	SEGGER_RTT_printf(0, "Free: %d\n", xPortGetFreeHeapSize());
 	xTaskCreate(task_main, "Main", configTASK_MAIN_STACK, this, configTASK_MAIN_PRIORITY, &handle);
@@ -408,50 +409,98 @@ uint8_t len = 0;
 
 void MainTask::ProcessPulse(Command cmd) {
 Pulse pulseproto;
+	vTracePrint(actorPulse, "Process Pulse");
+
 	pb_istream_t stream = pb_istream_from_buffer(m_pWake->RxData, m_pWake->GetSize());
-	if (pb_decode(&stream, Pulse_fields, &pulseproto)) {
-		uint32_t pin = pulseproto.pin;
-		bool pin_free = true;
-		for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
-			if (xPulseStruct[i].pin == pin) {
-				pin_free = false;
-				break;
-			}
-		}
+	if (pb_decode(&stream, Pulse_fields, &pulseproto) == false) {
+		m_pWake->TxData[0] = PulseError_PE_DECODE_ERROR;
+		m_pWake->ProcessTx(0x01, CMD_ERR, 1);
+		vTracePrint(actorPulse, "Pulse PE_DECODE_ERROR");
+		return;
+	}
 
-		if (pin_free == false) {
-			_log("Pin %d already in Pulse\n", pin);
-			m_pWake->ProcessTx(0x01, CMD_ERR, 0);
-			return;
-		}
-
-		// Ищем свободный пин
-		uint8_t pin_index_free = 0;
-		for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
-			if (xPulseStruct[i].pin == UINT32_MAX) {
-				// Свободный найден
-				pin_index_free = i;
-				break;
-			}
-		}
-
-		xPulseStruct[pin_index_free].pin = pin;
-		xPulseStruct[pin_index_free].width = pulseproto.width;
-		if (pulseproto.has_delay) {
-			xPulseStruct[pin_index_free].delay = pulseproto.delay;
-		} else {
-			xPulseStruct[pin_index_free].delay = 0;
-		}
-
-		_log("Add new Pulse at pin %d\n", pin);
-		_log("Delay: %d ms\n", xPulseStruct[pin_index_free].delay);
-		_log("Width: %d ms\n", xPulseStruct[pin_index_free].width);
-
-		if (xPulseStruct[pin_index_free].delay == 0) {
-			_log("Zero delay\n");
-
+uint32_t pin = pulseproto.pin;
+	bool pin_free = true;
+	for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
+		if (xPulseStruct[i].pin == pin) {
+			pin_free = false;
+			break;
 		}
 	}
+
+	if (pin_free == false) {
+		_log("Pin %d already in Pulse\n", pin);
+		m_pWake->TxData[0] = PulseError_PE_PIN_BUSY;
+		m_pWake->ProcessTx(0x01, CMD_ERR, 1);
+		vTracePrint(actorPulse, "Pulse PE_PIN_BUSY");
+		return;
+	}
+
+	// Ищем свободный пин
+	int8_t pin_index_free = INT8_MIN;
+	for (uint32_t i = 0; i < MAX_PULSE_PINS; i++) {
+		if (xPulseStruct[i].pin == UINT32_MAX) {
+			// Свободный найден
+			pin_index_free = i;
+			break;
+		}
+	}
+
+	if (pin_index_free == INT8_MIN) {
+		_log("No free delay pins found\n");
+		m_pWake->TxData[0] = PulseError_PE_NO_RESOURCES;
+		m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+	}
+
+	xPulseStruct[pin_index_free].pin = pin;
+	xPulseStruct[pin_index_free].width = pulseproto.width;
+	if (pulseproto.has_delay) {
+		xPulseStruct[pin_index_free].delay = pulseproto.delay;
+	} else {
+		xPulseStruct[pin_index_free].delay = 0;
+	}
+
+	_log("Add new Pulse at pin %d\n", pin);
+	_log("Delay: %d ms\n", xPulseStruct[pin_index_free].delay);
+	_log("Width: %d ms\n", xPulseStruct[pin_index_free].width);
+
+	vTracePrintF(actorPulse, "Added new Pulse pin: %d", xPulseStruct[pin_index_free].pin);
+	if (xPulseStruct[pin_index_free].delay == 0) {
+		_log("Zero delay, Toggle pin\n");
+		TogglePin(xPulseStruct[pin_index_free].pin);
+		xTimerChangePeriod(xPulseStruct[pin_index_free].timer, xPulseStruct[pin_index_free].width, 5);
+	} else {
+		_log("Add delay %d ms\n", xPulseStruct[pin_index_free].delay);
+		xTimerChangePeriod(xPulseStruct[pin_index_free].timer, xPulseStruct[pin_index_free].delay, 5);
+	}
+
+	xTimerStart(xPulseStruct[pin_index_free].timer, 5);
+	m_pWake->ProcessTx(0x01, cmd, 0);
+}
+
+
+bool MainTask::TogglePin(uint8_t pin) {
+	if (pin <= 3) {
+		uint8_t p = 1 << pin;
+		_log("Toggle PORTA: %04b\n", p);
+		vTracePrintF(actorPulse, "Toggle PORTA: %d", p);
+		PORTA_Toggle(p);
+	}
+
+	if (pin >= 4 and pin <= 7) {
+		uint8_t p = 1 << (pin - 4);
+		_log("Toggle PORTB: %04b\n", p);
+		vTracePrintF(actorPulse, "Toggle PORTB: %d", p);
+		PORTB_Toggle(p);
+	}
+
+	if (pin >= 8 and pin <= 17) {
+		uint16_t p = 1 << (pin - 8);
+		_log("Toggle Relay: %010b\n", p);
+		vTracePrintF(actorPulse, "Toggle Relay: %d", p);
+	}
+
+	return true;
 }
 
 

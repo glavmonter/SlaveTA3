@@ -59,6 +59,13 @@ message ResponseAll {
 
 
 
+enum PulseError {
+	PE_DECODE_ERROR = 1;
+	PE_NO_RESOURCES = 2;
+	PE_PIN_BUSY = 3;
+}
+
+
 message Pulse {
 	required uint32 pin = 1;  	// Номер вывода, 0-3 - PORTA, 4-7 - PORTB, 8-17 - Relays
 	required uint32 width = 2;  // Длительность импульса

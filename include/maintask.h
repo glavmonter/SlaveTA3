@@ -63,6 +63,7 @@ private:
 	Wiegand *m_pWiegandCh2;
 
 	traceString event;
+	traceString actorPulse;
 
 public:
 	USART_TypeDef *m_pUSART = SERIAL_USB_USART;
@@ -112,6 +113,8 @@ private:
 	void ProcessClimate(Command cmd);
 	void ProcessReadAll(Command cmd);
 	void ProcessPulse(Command cmd);
+
+	bool TogglePin(uint8_t pin);
 };
 
 
