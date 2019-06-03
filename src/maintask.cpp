@@ -249,8 +249,22 @@ uint16_t ioe_responce;
 		} else if (event == xQueuePulseTimer) {
 			uint32_t timer_index;
 			xQueueReceive(event, &timer_index, 0);
-			_log("Timer Pulse Callback\n");
 
+			_log("Timer Pulse Callback (local %d)\n", timer_index);
+			PulseStruct *ps = &xPulseStruct[timer_index];
+			if (ps->delay > 0) {
+				_log("Delay %d ms, toggle\n", ps->delay);
+				TogglePin(ps->pin);
+				ps->delay = 0;
+				xTimerChangePeriod(ps->timer, ps->width, 5);
+				xTimerStart(ps->timer, 5);
+			} else {
+				_log("Delay is Zero, toggle\n");
+				TogglePin(ps->pin);
+				ps->delay = 0;
+				ps->width = 0;
+				ps->pin = UINT32_MAX; // Invalid pin
+			}
 		} else {
 			_log("!!!Pizda!!!\n");
 		}
@@ -449,7 +463,9 @@ uint32_t pin = pulseproto.pin;
 	if (pin_index_free == INT8_MIN) {
 		_log("No free delay pins found\n");
 		m_pWake->TxData[0] = PulseError_PE_NO_RESOURCES;
-		m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+		m_pWake->ProcessTx(0x01, CMD_ERR, 1);
+		vTracePrint(actorPulse, "Pulse PE_NO_RESOURCES");
+		return;
 	}
 
 	xPulseStruct[pin_index_free].pin = pin;
@@ -460,7 +476,7 @@ uint32_t pin = pulseproto.pin;
 		xPulseStruct[pin_index_free].delay = 0;
 	}
 
-	_log("Add new Pulse at pin %d\n", pin);
+	_log("Add new Pulse at pin %d (local %d)\n", pin, pin_index_free);
 	_log("Delay: %d ms\n", xPulseStruct[pin_index_free].delay);
 	_log("Width: %d ms\n", xPulseStruct[pin_index_free].width);
 
@@ -482,23 +498,39 @@ uint32_t pin = pulseproto.pin;
 bool MainTask::TogglePin(uint8_t pin) {
 	if (pin <= 3) {
 		uint8_t p = 1 << pin;
-		_log("Toggle PORTA: %04b\n", p);
+		_log("Toggle PORTA: %04X\n", p);
 		vTracePrintF(actorPulse, "Toggle PORTA: %d", p);
 		PORTA_Toggle(p);
 	}
 
 	if (pin >= 4 and pin <= 7) {
 		uint8_t p = 1 << (pin - 4);
-		_log("Toggle PORTB: %04b\n", p);
+		_log("Toggle PORTB: %04X\n", p);
 		vTracePrintF(actorPulse, "Toggle PORTB: %d", p);
 		PORTB_Toggle(p);
 	}
 
 	if (pin >= 8 and pin <= 17) {
 		uint16_t p = 1 << (pin - 8);
-		_log("Toggle Relay: %010b\n", p);
+		_log("Toggle Relay: %04X\n", p);
 		vTracePrintF(actorPulse, "Toggle Relay: %d", p);
+		IOECommand ioe_cmd;
+		ioe_cmd.cmd = CMD_RELAYS_TOGGLE;
+		ioe_cmd.data[1] = p & 0x00FF;			// Передаём номер пина в big-endian
+		ioe_cmd.data[0] = (p & 0xFF00) >> 8;
+		xQueueSend(IOExpanders::Instance().xQueueCommands, &ioe_cmd, 1);
+
+		uint16_t ioe_responce;
+		if (xQueueReceive(IOExpanders::Instance().xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+			_log("Set OK\n");
+		} else {
+// TODO Добавить на проверку правильности
+			_log("Set Err\n");
+		}
 	}
+
+	if (pin > 18)
+		return false;
 
 	return true;
 }
