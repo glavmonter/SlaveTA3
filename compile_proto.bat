@@ -4,3 +4,5 @@ move slave.pb.c src\
 
 protoc --python_out=. slave.proto
 move slave_pb2.py "Slave_TA3 Tools"
+
+protoc --csharp_out=. slave.proto

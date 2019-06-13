@@ -130,27 +130,27 @@ def get_all(port, address, mask):
         ret = ret[4:-1]
         print('Data: {} ({} bytes)'.format(_humane_bytes(ret), len(ret)))
 
-        responce_all = slave_pb2.ResponceAll()
+        responce_all = slave_pb2.ResponseAll()
         responce_all.ParseFromString(ret)
         print(responce_all)
-        porta_idr = responce_all.PORTA_IDR if responce_all.HasField('PORTA_IDR') else None
-        portb_idr = responce_all.PORTB_IDR if responce_all.HasField('PORTB_IDR') else None
-        porta_odr = responce_all.PORTA_ODR if responce_all.HasField('PORTA_ODR') else None
-        portb_odr = responce_all.PORTB_ODR if responce_all.HasField('PORTB_ODR') else None
-        relays_idr = responce_all.RELAYS_IDR if responce_all.HasField('RELAYS_IDR') else None
-        relays_odr = responce_all.RELAYS_ODR if responce_all.HasField('RELAYS_ODR') else None
+        porta_idr = responce_all.PORTA_IDR
+        portb_idr = responce_all.PORTB_IDR
+        porta_odr = responce_all.PORTA_ODR
+        portb_odr = responce_all.PORTB_ODR
+        relays_idr = responce_all.RELAYS_IDR
+        relays_odr = responce_all.RELAYS_ODR
 
         wieg1_size = 0
         wieg1_data = b''
         wieg2_size = 0
         wieg2_data = b''
 
-        wieg = responce_all.WiegandCh1 if responce_all.HasField('WiegandCh1') else None
+        wieg = responce_all.WiegandCh1
         if wieg is not None:
             wieg1_size = wieg.size
             wieg1_data = wieg.data
 
-        wieg = responce_all.WiegandCh2 if responce_all.HasField('WiegandCh2') else None
+        wieg = responce_all.WiegandCh2
         if wieg is not None:
             wieg2_size = wieg.size
             wieg2_data = wieg.data

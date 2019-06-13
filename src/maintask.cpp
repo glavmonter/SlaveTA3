@@ -37,7 +37,7 @@
 #define DEVICE_NAME			"Slave-arm"
 
 __attribute__ ((section(".vars_version_sect")))
-__IO const uint32_t device_version = 0x00000001;
+__IO const uint32_t device_version = 0x00000002;
 
 __attribute__ ((section(".vars_key_sect")))
 __IO const uint8_t key[] = {0x64, 0xCA, 0x56, 0xBA, 0x15, 0x57, 0x63, 0x39, 0xDA, 0x57, 0x40, 0x21};
@@ -470,11 +470,7 @@ uint32_t pin = pulseproto.pin;
 
 	xPulseStruct[pin_index_free].pin = pin;
 	xPulseStruct[pin_index_free].width = pulseproto.width;
-	if (pulseproto.has_delay) {
-		xPulseStruct[pin_index_free].delay = pulseproto.delay;
-	} else {
-		xPulseStruct[pin_index_free].delay = 0;
-	}
+	xPulseStruct[pin_index_free].delay = pulseproto.delay;
 
 	_log("Add new Pulse at pin %d (local %d)\n", pin, pin_index_free);
 	_log("Delay: %d ms\n", xPulseStruct[pin_index_free].delay);
@@ -550,13 +546,11 @@ ResponseAll responce;
 uint8_t subcommand = m_pWake->RxData[0];
 
 	if (subcommand & SCMD_PORTS_IDR) {
-		responce.has_PORTA_IDR = responce.has_PORTB_IDR = true;
 		responce.PORTA_IDR = porta_idr;
 		responce.PORTB_IDR = portb_idr;
 	}
 
 	if (subcommand & SCMD_PORTS_ODR) {
-		responce.has_PORTA_ODR = responce.has_PORTB_ODR = true;
 		responce.PORTA_ODR = porta_odr;
 		responce.PORTB_ODR = portb_odr;
 	}
@@ -569,7 +563,6 @@ uint8_t subcommand = m_pWake->RxData[0];
 		ioe_cmd.cmd = CMD_RELAYS_IDR;
 		if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 5) == pdTRUE) {
 			if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
-				responce.has_RELAYS_IDR = true;
 				responce.RELAYS_IDR = ioe_responce;
 			}
 		}
@@ -579,42 +572,28 @@ uint8_t subcommand = m_pWake->RxData[0];
 		ioe_cmd.cmd = CMD_RELAYS_ODRR;
 		if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 5) == pdTRUE) {
 			if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
-				responce.has_RELAYS_ODR = true;
 				responce.RELAYS_ODR = ioe_responce;
 			}
 		}
 	}
 
 	TickType_t currentTick = xTaskGetTickCount();
-
-	sWiegand1.ValidTime = xTaskGetTickCount() - 20;
-	sWiegand1.WiegandLen = 17;
-	sWiegand1.Data[0] = 0xCB;
-	sWiegand1.Data[1] = 0xD9;
-	sWiegand1.Data[2] = 0x73;
 	if (subcommand & SCMD_WIEGAND_1) {
 		if ((sWiegand1.ValidTime > 0) && (sWiegand1.ValidTime < currentTick)) {
 			responce.WiegandCh1.size = sWiegand1.WiegandLen;
 			uint8_t max_bytes = GetWiegandSizeInBytes(sWiegand1);
 			responce.WiegandCh1.data.size = max_bytes;
 			memcpy(responce.WiegandCh1.data.bytes, sWiegand1.Data, max_bytes);
-			responce.has_WiegandCh1 = true;
 			sWiegand1.ValidTime = 0;
 		}
 	}
 
-	sWiegand2.ValidTime = xTaskGetTickCount() - 20;
-	sWiegand2.WiegandLen = 18;
-	sWiegand2.Data[0] = 0xA8;
-	sWiegand2.Data[1] = 0x35;
-	sWiegand2.Data[2] = 0xCC;
 	if (subcommand & SCMD_WIEGAND_2) {
 		if ((sWiegand2.ValidTime > 0) && (sWiegand2.ValidTime < currentTick)) {
 			responce.WiegandCh2.size = sWiegand2.WiegandLen;
 			uint8_t max_bytes = GetWiegandSizeInBytes(sWiegand2);
 			responce.WiegandCh2.data.size = max_bytes;
 			memcpy(responce.WiegandCh2.data.bytes, sWiegand2.Data, max_bytes);
-			responce.has_WiegandCh2 = true;
 			sWiegand2.ValidTime = 0;
 		}
 	}
