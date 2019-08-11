@@ -121,14 +121,6 @@ TaskHandle_t handle = NULL;
 	assert_param(handle);
 #endif
 
-//	xTaskCreate(vTestTask1, "Task1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
-//	xTaskCreate(vTestTask2, "Task2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
-//
-//	xTaskCreate(vConsumer, "Cons", configMINIMAL_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 1, NULL);
-//	xTaskCreate(vProducer, "Prod", configMINIMAL_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 2, NULL);
-//	vTaskStartScheduler();
-//	for (;;){}
-
 	MainTask &mt = MainTask::Instance();
 	return mt.run();
 }

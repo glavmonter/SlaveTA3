@@ -55,6 +55,11 @@ typedef enum Command_ {
 	CMD_PORTS_TOGGLE				= 0x52,
 	CMD_RELAYS_TOGGLE				= 0x53,
 
+	CMD_OUTPUT_ALL_ODRW             = 0x54, /// Записать состояния PORTA, PORTB, RELAYS
+	CMD_OUTPUT_ALL_SET              = 0x55, /// Записать единицу в PORTA, PORTB, RELAYS
+	CMD_OUTPUT_ALL_RESET            = 0x56, /// Записать ноль в PORTA, PORTB, RELAYS
+	CMD_OUTPUT_ALL_TOGGLE           = 0x57,
+
 } Command;
 
 

@@ -37,7 +37,7 @@
 #define DEVICE_NAME			"Slave-arm"
 
 __attribute__ ((section(".vars_version_sect")))
-__IO const uint32_t device_version = 0x00000002;
+__IO const uint32_t device_version = 0x00000003;
 
 __attribute__ ((section(".vars_key_sect")))
 __IO const uint8_t key[] = {0x64, 0xCA, 0x56, 0xBA, 0x15, 0x57, 0x63, 0x39, 0xDA, 0x57, 0x40, 0x21};
@@ -229,6 +229,13 @@ uint16_t ioe_responce;
 					ProcessPulse(m_pWake->GetCommand());
 					break;
 
+				case CMD_OUTPUT_ALL_ODRW:
+				case CMD_OUTPUT_ALL_RESET:
+				case CMD_OUTPUT_ALL_SET:
+				case CMD_OUTPUT_ALL_TOGGLE:
+				    ProcessWriteAll(m_pWake->GetCommand());
+				    break;
+
 				default:
 					_log("Default: 0x%02X\n", m_pWake->GetCommand());
 					m_pWake->ProcessTx(0x01, CMD_ERR, 0);
@@ -270,6 +277,89 @@ uint16_t ioe_responce;
 		}
 	}
 }
+
+
+
+void MainTask::ProcessWriteAll(Command cmd) {
+
+    _log("%s (%02X)\n", __func__, cmd);
+
+uint8_t porta, portb;
+    porta = m_pWake->RxData[0] & 0x0F;
+    portb = m_pWake->RxData[1] & 0x0F;
+
+uint16_t   ioe_responce;
+IOECommand ioe_cmd;
+    ioe_cmd.cmd = CMD_RELAYS_ODRW;
+    ioe_cmd.data[0] = m_pWake->RxData[2];
+    ioe_cmd.data[1] = m_pWake->RxData[3];
+
+    _log("PORTA: 0x%02X\n", porta);
+    _log("PORTB: 0x%02X\n", portb);
+    _log("Relay: 0x%02X%02X\n", ioe_cmd.data[0], ioe_cmd.data[1]);
+
+IOExpanders &expanders = IOExpanders::Instance();
+
+    if (cmd == CMD_OUTPUT_ALL_ODRW) {
+        PORTA_Write(porta);
+        PORTB_Write(portb);
+
+        ioe_cmd.cmd = CMD_RELAYS_ODRW;
+        if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 1) == pdTRUE) {
+            if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+                _log("Relays ODRW Ok\n");
+                m_pWake->ProcessTx(0x01, cmd, 0);
+                return;
+            }
+        }
+
+    } else if (cmd == CMD_OUTPUT_ALL_RESET) {
+        uint8_t odr = (porta & 0x0F) << 4;
+        GPIOD->BSRR = odr;
+        odr = (portb & 0x0F) << 4;
+        GPIOE->BSRR = odr;
+
+        ioe_cmd.cmd = CMD_RELAYS_RESET;
+        if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 1) == pdTRUE) {
+            if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+                _log("Relays RESET OK\n");
+                m_pWake->ProcessTx(0x01, cmd, 0);
+                return;
+            }
+        }
+
+    } else if (cmd == CMD_OUTPUT_ALL_SET) {
+        uint8_t odr = (porta & 0x0F) << 4;
+        GPIOD->BRR = odr;
+        odr = (portb & 0x0F) << 4;
+        GPIOE->BRR = odr;
+
+        ioe_cmd.cmd = CMD_RELAYS_SET;
+        if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 1) == pdTRUE) {
+            if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+                _log("Relays SET Ok\n");
+                m_pWake->ProcessTx(0x01, cmd, 0);
+                return;
+            }
+        }
+
+    } else if (cmd == CMD_OUTPUT_ALL_TOGGLE) {
+        PORTA_Toggle(porta);
+        PORTB_Toggle(portb);
+
+        ioe_cmd.cmd = CMD_RELAYS_TOGGLE;
+        if (xQueueSend(expanders.xQueueCommands, &ioe_cmd, 1) == pdTRUE) {
+            if (xQueueReceive(expanders.xQueueResponce, &ioe_responce, 10) == pdTRUE) {
+                _log("Relays TOGGLE Ok\n");
+                m_pWake->ProcessTx(0x01, cmd, 0);
+                return;
+            }
+        }
+    }
+
+    m_pWake->ProcessTx(0x01, CMD_ERR, 0);
+}
+
 
 
 #define DEVICE_ID_BASE_ADDR		0x1FFFF7E8

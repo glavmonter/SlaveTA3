@@ -50,6 +50,11 @@ class Commands(Enum):
     PORTS_TOGGLE = 0x52
     RELAYS_TOGGLE = 0x53
 
+    OUTPUT_ALL_ODRW = 0x54   # Записать состояния PORTA, PORTB, RELAYS
+    OUTPUT_ALL_SET = 0x55    # Записать единицу в PORTA, PORTB, RELAYS
+    OUTPUT_ALL_RESET = 0x56  # Записать ноль в PORTA, PORTB, RELAYS
+    OUTPUT_ALL_TOGGLE = 0x57
+
 
 class SubCommands(Enum):
     SCMD_PORTS_IDR = (1 << 0)
@@ -114,6 +119,32 @@ def send_pulse(port, address, pin, width, delay=0):
     except serial.SerialException as err:
         sys.stderr.write(str(err) + '\n')
     return ret_err
+
+
+def set_all(port, address, porta, portb, relays, command):
+    try:
+        ser = serial.Serial(port=port, baudrate=BAUDRATE, timeout=0.1)
+        request = b''
+        if command == 'WD':
+            request = Wake.wake_transmit(Commands.OUTPUT_ALL_ODRW, struct.pack('>BBH', porta, portb, relays), address)
+        elif command == 'WZ':
+            request = Wake.wake_transmit(Commands.OUTPUT_ALL_RESET, struct.pack('>BBH', porta, portb, relays), address)
+        elif command == 'WO':
+            request = Wake.wake_transmit(Commands.OUTPUT_ALL_SET, struct.pack('>BBH', porta, portb, relays), address)
+        elif command == 'WT':
+            request = Wake.wake_transmit(Commands.OUTPUT_ALL_TOGGLE, struct.pack('>BBH', porta, portb, relays), address)
+        else:
+            pass
+
+        ser.write(request)
+        ret = Wake.wake_decode(ser.read(256))
+        print('Request:  ', _humane_bytes(request))
+        print('Responce: {} ({} bytes)'.format(_humane_bytes(ret), len(ret)))
+        ser.close()
+
+    except serial.SerialException as e:
+        sys.stderr.write(str(e) + '\n')
+    return
 
 
 def get_all(port, address, mask):

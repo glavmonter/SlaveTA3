@@ -115,6 +115,8 @@ private:
 	void ProcessPulse(Command cmd);
 
 	bool TogglePin(uint8_t pin);
+
+	void ProcessWriteAll(Command cmd);
 };
 
 
